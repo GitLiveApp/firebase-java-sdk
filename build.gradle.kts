@@ -15,9 +15,11 @@ repositories {
 plugins {
     `java-library`
     `maven-publish`
+    signing
     id("org.jetbrains.kotlin.jvm") version "1.6.10"
     kotlin("plugin.serialization") version "1.6.10"
     id("org.jlleitschuh.gradle.ktlint") version "10.0.0"
+    id("com.github.ben-manes.versions") version "0.42.0"
 }
 
 group = "dev.gitlive"
@@ -179,4 +181,30 @@ tasks.named("publish").configure {
 
 ktlint {
     version.set("0.41.0")
+}
+
+signing {
+    val signingKey: String? by project
+    val signingPassword: String? by project
+    useInMemoryPgpKeys(signingKey, signingPassword)
+    sign(publishing.publications)
+}
+
+tasks.withType<com.github.benmanes.gradle.versions.updates.DependencyUpdatesTask> {
+
+    fun isNonStable(version: String): Boolean {
+        val stableKeyword = listOf("RELEASE", "FINAL", "GA").any { version.toUpperCase().contains(it) }
+        val versionMatch = "^[0-9,.v-]+(-r)?$".toRegex().matches(version)
+
+        return (stableKeyword || versionMatch).not()
+    }
+
+    rejectVersionIf {
+        isNonStable(candidate.version)
+    }
+
+    checkForGradleUpdate = true
+    outputFormatter = "plain,html"
+    outputDir = "build/dependency-reports"
+    reportfileName = "dependency-updates"
 }
