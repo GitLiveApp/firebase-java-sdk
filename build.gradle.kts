@@ -26,6 +26,7 @@ group = "dev.gitlive"
 version = project.property("version") as String
 
 java {
+    withSourcesJar()
     sourceCompatibility = JavaVersion.VERSION_11
 }
 
@@ -89,7 +90,7 @@ val cleanLibs by tasks.creating(Delete::class) {
     delete("$buildDir/libs")
 }
 
-configure<PublishingExtension> {
+publishing {
 
     repositories {
         maven {
@@ -101,46 +102,47 @@ configure<PublishingExtension> {
         }
     }
 
-    publications.all {
-        this as MavenPublication
+    publications {
+        create<MavenPublication>("library") {
+            from(components["java"])
 
-        pom {
-            name.set("firebase-java-sdk")
-            description.set("The Firebase Java SDK is a pure java port of the Firebase Android SDK to run in clientside java environments such as the desktop.")
-            url.set("https://github.com/GitLiveApp/firebase-java-sdk")
-            inceptionYear.set("2023")
+            pom {
+                name.set("firebase-java-sdk")
+                 description.set("The Firebase Java SDK is a pure java port of the Firebase Android SDK to run in clientside java environments such as the desktop.")
+                 url.set("https://github.com/GitLiveApp/firebase-java-sdk")
+                 inceptionYear.set("2023")
 
-            scm {
-                url.set("https://github.com/GitLiveApp/firebase-java-sdk")
-                connection.set("scm:git:https://github.com/GitLiveApp/firebase-java-sdk.git")
-                developerConnection.set("scm:git:https://github.com/GitLiveApp/firebase-java-sdk.git")
-                tag.set("HEAD")
-            }
+                 scm {
+                     url.set("https://github.com/GitLiveApp/firebase-java-sdk")
+                     connection.set("scm:git:https://github.com/GitLiveApp/firebase-java-sdk.git")
+                     developerConnection.set("scm:git:https://github.com/GitLiveApp/firebase-java-sdk.git")
+                     tag.set("HEAD")
+                 }
 
-            issueManagement {
-                system.set("GitHub Issues")
-                url.set("https://github.com/GitLiveApp/firebase-java-sdk/issues")
-            }
+                 issueManagement {
+                     system.set("GitHub Issues")
+                     url.set("https://github.com/GitLiveApp/firebase-java-sdk/issues")
+                 }
 
-            developers {
-                developer {
-                    name.set("Nicholas Bransby-Williams")
-                    email.set("nbransby@gmail.com")
-                }
-            }
+                 developers {
+                     developer {
+                         name.set("Nicholas Bransby-Williams")
+                         email.set("nbransby@gmail.com")
+                     }
+                 }
 
-            licenses {
-                license {
-                    name.set("The Apache Software License, Version 2.0")
-                    url.set("http://www.apache.org/licenses/LICENSE-2.0.txt")
-                    distribution.set("repo")
-                    comments.set("A business-friendly OSS license")
-                }
+                 licenses {
+                     license {
+                         name.set("The Apache Software License, Version 2.0")
+                         url.set("http://www.apache.org/licenses/LICENSE-2.0.txt")
+                         distribution.set("repo")
+                         comments.set("A business-friendly OSS license")
+                     }
+                 }
             }
         }
     }
-
-}
+ }
 
 dependencies {
     compileOnly("org.robolectric:android-all:12.1-robolectric-8229987")
