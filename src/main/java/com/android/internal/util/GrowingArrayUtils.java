@@ -24,7 +24,7 @@ package com.android.internal.util;
  * NOT the number of elements in the array. The current size of the array is always passed in as a
  * parameter.
  *
- * @hide
+ * 
  */
 public final class GrowingArrayUtils {
 

@@ -30,13 +30,13 @@ public class RemoteException extends AndroidException {
         super(message);
     }
 
-    /** @hide */
+    /**  */
     public RemoteException(String message, Throwable cause, boolean enableSuppression,
                            boolean writableStackTrace) {
         super(message, cause, enableSuppression, writableStackTrace);
     }
 
-    /** {@hide} */
+    /** {} */
     public RuntimeException rethrowAsRuntimeException() {
         throw new RuntimeException(this);
     }
@@ -52,7 +52,7 @@ public class RemoteException extends AndroidException {
      * failure of a call, or any default values returned. For this reason, we
      * want to strongly throw when there was trouble with the transaction.
      *
-     * @hide
+     * 
      */
     public RuntimeException rethrowFromSystemServer() {
         if (this instanceof DeadObjectException) {

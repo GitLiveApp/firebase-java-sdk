@@ -48,7 +48,7 @@ public class TextUtils {
     private static final String ELLIPSIS_NORMAL = "\u2026"; // HORIZONTAL ELLIPSIS (…)
     private static final String ELLIPSIS_TWO_DOTS = "\u2025"; // TWO DOT LEADER (‥)
 
-    /** {@hide} */
+    /** {} */
     @NonNull
     public static String getEllipsisString(@NonNull TruncateAt method) {
         return (method == TruncateAt.END_SMALL) ? ELLIPSIS_TWO_DOTS : ELLIPSIS_NORMAL;
@@ -373,8 +373,8 @@ public class TextUtils {
      * A simple string splitter.
      *
      * <p>If the final character in the string to split is the delimiter then no empty string will
-     * be returned for the empty string after that delimeter. That is, splitting <tt>"a,b,"</tt> on
-     * comma will return <tt>"a", "b"</tt>, not <tt>"a", "b", ""</tt>.
+     * be returned for the empty string after that delimeter. That is, splitting "a,b," on
+     * comma will return "a", "b", not "a", "b", "".
      */
     public static class SimpleStringSplitter implements StringSplitter, Iterator<String> {
         private String mString;
@@ -443,29 +443,29 @@ public class TextUtils {
         return str == null || str.length() == 0;
     }
 
-    /** {@hide} */
+    /** {} */
     public static String nullIfEmpty(@Nullable String str) {
         return isEmpty(str) ? null : str;
     }
 
-    /** {@hide} */
+    /** {} */
     public static String emptyIfNull(@Nullable String str) {
         return str == null ? "" : str;
     }
 
-    /** {@hide} */
+    /** {} */
     public static String firstNotEmpty(@Nullable String a, @NonNull String b) {
         return !isEmpty(a) ? a : Preconditions.checkStringNotEmpty(b);
     }
 
-    /** {@hide} */
+    /** {} */
     public static int length(@Nullable String s) {
         return isEmpty(s) ? 0 : s.length();
     }
 
     /**
      * @return interned string if it's null.
-     * @hide
+     * 
      */
     public static String safeIntern(String s) {
         return (s != null) ? s.intern() : null;
@@ -577,61 +577,61 @@ public class TextUtils {
         private int mEnd;
     }
 
-    /** @hide */
+    /**  */
     public static final int ALIGNMENT_SPAN = 1;
-    /** @hide */
+    /**  */
     public static final int FIRST_SPAN = ALIGNMENT_SPAN;
-    /** @hide */
+    /**  */
     public static final int FOREGROUND_COLOR_SPAN = 2;
-    /** @hide */
+    /**  */
     public static final int RELATIVE_SIZE_SPAN = 3;
-    /** @hide */
+    /**  */
     public static final int SCALE_X_SPAN = 4;
-    /** @hide */
+    /**  */
     public static final int STRIKETHROUGH_SPAN = 5;
-    /** @hide */
+    /**  */
     public static final int UNDERLINE_SPAN = 6;
-    /** @hide */
+    /**  */
     public static final int STYLE_SPAN = 7;
-    /** @hide */
+    /**  */
     public static final int BULLET_SPAN = 8;
-    /** @hide */
+    /**  */
     public static final int QUOTE_SPAN = 9;
-    /** @hide */
+    /**  */
     public static final int LEADING_MARGIN_SPAN = 10;
-    /** @hide */
+    /**  */
     public static final int URL_SPAN = 11;
-    /** @hide */
+    /**  */
     public static final int BACKGROUND_COLOR_SPAN = 12;
-    /** @hide */
+    /**  */
     public static final int TYPEFACE_SPAN = 13;
-    /** @hide */
+    /**  */
     public static final int SUPERSCRIPT_SPAN = 14;
-    /** @hide */
+    /**  */
     public static final int SUBSCRIPT_SPAN = 15;
-    /** @hide */
+    /**  */
     public static final int ABSOLUTE_SIZE_SPAN = 16;
-    /** @hide */
+    /**  */
     public static final int TEXT_APPEARANCE_SPAN = 17;
-    /** @hide */
+    /**  */
     public static final int ANNOTATION = 18;
-    /** @hide */
+    /**  */
     public static final int SUGGESTION_SPAN = 19;
-    /** @hide */
+    /**  */
     public static final int SPELL_CHECK_SPAN = 20;
-    /** @hide */
+    /**  */
     public static final int SUGGESTION_RANGE_SPAN = 21;
-    /** @hide */
+    /**  */
     public static final int EASY_EDIT_SPAN = 22;
-    /** @hide */
+    /**  */
     public static final int LOCALE_SPAN = 23;
-    /** @hide */
+    /**  */
     public static final int TTS_SPAN = 24;
-    /** @hide */
+    /**  */
     public static final int ACCESSIBILITY_CLICKABLE_SPAN = 25;
-    /** @hide */
+    /**  */
     public static final int ACCESSIBILITY_URL_SPAN = 26;
-    /** @hide */
+    /**  */
     public static final int LAST_SPAN = ACCESSIBILITY_URL_SPAN;
 
     /**
@@ -1069,7 +1069,7 @@ public class TextUtils {
      *
      * If copySpans is set, source must be an instance of Spanned.
      *
-     * {@hide}
+     * {}
      */
     @NonNull
     public static CharSequence toUpperCase(@Nullable Locale locale, @NonNull CharSequence source,
@@ -1137,7 +1137,7 @@ public class TextUtils {
         END,
         MARQUEE,
         /**
-         * @hide
+         * 
          */
         END_SMALL
     }
@@ -1195,7 +1195,7 @@ public class TextUtils {
      * If <code>callback</code> is non-null, it will be called to
      * report the start and end of the ellipsized range.
      *
-     * @hide
+     * 
      */
     public static CharSequence ellipsize(CharSequence text,
             TextPaint paint,
@@ -1383,7 +1383,7 @@ public class TextUtils {
      * @deprecated Do not use. This is not internationalized, and has known issues
      * with right-to-left text, languages that have more than one plural form, languages
      * that use a different character as a comma-like separator, etc.
-     * Use {@link #listEllipsize} instead.
+     * Use listEllipsize instead.
      */
     @Deprecated
     public static CharSequence commaEllipsize(CharSequence text,
@@ -1395,7 +1395,7 @@ public class TextUtils {
     }
 
     /**
-     * @hide
+     * 
      */
     @Deprecated
     public static CharSequence commaEllipsize(CharSequence text, TextPaint p,
@@ -1667,7 +1667,7 @@ public class TextUtils {
     }
 
     /**
-     * @hide
+     * 
      */
     public static boolean isPrintableAscii(final char c) {
         final int asciiFirst = 0x20;
@@ -1676,7 +1676,7 @@ public class TextUtils {
     }
 
     /**
-     * @hide
+     * 
      */
     public static boolean isPrintableAsciiOnly(final CharSequence str) {
         final int len = str.length();
@@ -1822,7 +1822,7 @@ public class TextUtils {
      * Does a comma-delimited list 'delimitedString' contain a certain item?
      * (without allocating memory)
      *
-     * @hide
+     * 
      */
     public static boolean delimitedStringContains(
             String delimitedString, char delimiter, String item) {
@@ -1862,7 +1862,7 @@ public class TextUtils {
      * @param spanned The Spanned from which spans were extracted
      * @return A subset of spans where empty spans ({@link Spanned#getSpanStart(Object)}  ==
      * {@link Spanned#getSpanEnd(Object)} have been removed. The initial order is preserved
-     * @hide
+     * 
      */
     @SuppressWarnings("unchecked")
     public static <T> T[] removeEmptySpans(T[] spans, Spanned spanned, Class<T> klass) {
@@ -1901,7 +1901,7 @@ public class TextUtils {
      * Pack 2 int values into a long, useful as a return value for a range
      * @see #unpackRangeStartFromLong(long)
      * @see #unpackRangeEndFromLong(long)
-     * @hide
+     * 
      */
     public static long packRangeInLong(int start, int end) {
         return (((long) start) << 32) | end;
@@ -1911,7 +1911,7 @@ public class TextUtils {
      * Get the start value from a range packed in a long by {@link #packRangeInLong(int, int)}
      * @see #unpackRangeEndFromLong(long)
      * @see #packRangeInLong(int, int)
-     * @hide
+     * 
      */
     public static int unpackRangeStartFromLong(long range) {
         return (int) (range >>> 32);
@@ -1921,7 +1921,7 @@ public class TextUtils {
      * Get the end value from a range packed in a long by {@link #packRangeInLong(int, int)}
      * @see #unpackRangeStartFromLong(long)
      * @see #packRangeInLong(int, int)
-     * @hide
+     * 
      */
     public static int unpackRangeEndFromLong(long range) {
         return (int) (range & 0x00000000FFFFFFFFL);
@@ -1949,7 +1949,7 @@ public class TextUtils {
 //    /**
 //     * Return localized string representing the given number of selected items.
 //     *
-//     * @hide
+//     * 
 //     */
 //    public static CharSequence formatSelectedCount(int count) {
 //        return Resources.getSystem().getQuantityString(R.plurals.selected_count, count, count);
@@ -1957,7 +1957,7 @@ public class TextUtils {
 
     /**
      * Returns whether or not the specified spanned text has a style span.
-     * @hide
+     * 
      */
     public static boolean hasStyleSpan(@NonNull Spanned spanned) {
         Preconditions.checkArgument(spanned != null);
@@ -1976,7 +1976,7 @@ public class TextUtils {
      * {@link NoCopySpan}'s are removed from the copy. Otherwise the given {@code charSequence} is
      * returned as it is.
      *
-     * @hide
+     * 
      */
     @Nullable
     public static CharSequence trimNoCopySpans(@Nullable CharSequence charSequence) {
@@ -1990,7 +1990,7 @@ public class TextUtils {
     /**
      * Prepends {@code start} and appends {@code end} to a given {@link StringBuilder}
      *
-     * @hide
+     * 
      */
     public static void wrap(StringBuilder builder, String start, String end) {
         builder.insert(0, start);
@@ -2008,7 +2008,7 @@ public class TextUtils {
      * the length() is smaller than {@link #PARCEL_SAFE_TEXT_LENGTH}. Used for text that is parceled
      * into a {@link Parcelable}.
      *
-     * @hide
+     * 
      */
     @Nullable
     public static <T extends CharSequence> T trimToParcelableSize(@Nullable T text) {
@@ -2022,7 +2022,7 @@ public class TextUtils {
      *
      * @param size length of the result, should be greater than 0
      *
-     * @hide
+     * 
      */
     @Nullable
     public static <T extends CharSequence> T trimToSize(@Nullable T text,

@@ -186,7 +186,7 @@ public class SparseIntArray implements Cloneable {
 
     /**
      * Directly set the value at a particular index.
-     * @hide
+     * 
      */
     public void setValueAt(int index, int value) {
         mValues[index] = value;
@@ -242,7 +242,7 @@ public class SparseIntArray implements Cloneable {
     /**
      * Provides a copy of keys.
      *
-     * @hide
+     * 
      * */
     public int[] copyKeys() {
         if (size() == 0) {

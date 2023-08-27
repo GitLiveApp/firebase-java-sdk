@@ -225,13 +225,13 @@ public final class Log {
         return println(LOG_ID_MAIN, priority, tag, msg);
     }
 
-    /** @hide */ public static final int LOG_ID_MAIN = 0;
-    /** @hide */ public static final int LOG_ID_RADIO = 1;
-    /** @hide */ public static final int LOG_ID_EVENTS = 2;
-    /** @hide */ public static final int LOG_ID_SYSTEM = 3;
-    /** @hide */ public static final int LOG_ID_CRASH = 4;
+    /**  */ public static final int LOG_ID_MAIN = 0;
+    /**  */ public static final int LOG_ID_RADIO = 1;
+    /**  */ public static final int LOG_ID_EVENTS = 2;
+    /**  */ public static final int LOG_ID_SYSTEM = 3;
+    /**  */ public static final int LOG_ID_CRASH = 4;
 
-    /** @hide */ @SuppressWarnings("unused")
+    /**  */ @SuppressWarnings("unused")
     public static int println(int bufID,
                               int priority, String tag, String msg) {
         FirebasePlatform.firebasePlatform.log(tag + " " + msg);

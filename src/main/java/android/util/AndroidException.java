@@ -35,7 +35,7 @@ public class AndroidException extends Exception {
         super(cause);
     }
 
-    /** @hide */
+    /**  */
     protected AndroidException(String message, Throwable cause, boolean enableSuppression,
                                boolean writableStackTrace) {
         super(message, cause, enableSuppression, writableStackTrace);

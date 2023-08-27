@@ -55,7 +55,7 @@ public class Base64OutputStream extends FilterOutputStream {
      *        constants in {@link Base64}
      * @param encode true to encode, false to decode
      *
-     * @hide
+     * 
      */
     public Base64OutputStream(OutputStream out, int flags, boolean encode) {
         super(out);

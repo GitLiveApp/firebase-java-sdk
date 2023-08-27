@@ -58,7 +58,6 @@ import java.lang.annotation.RetentionPolicy;
  * }</pre>
  */
 public interface Parcelable {
-    /** @hide */
     @IntDef(flag = true, prefix = { "PARCELABLE_" }, value = {
             PARCELABLE_WRITE_RETURN_VALUE,
             PARCELABLE_ELIDE_DUPLICATES,
@@ -82,7 +81,6 @@ public interface Parcelable {
      * across its inner data members.  This flag instructs the inner data
      * types to omit that data during marshaling.  Exact behavior may vary
      * on a case by case basis.
-     * @hide
      */
     public static final int PARCELABLE_ELIDE_DUPLICATES = 0x0002;
 
@@ -92,7 +90,6 @@ public interface Parcelable {
      * marshalled.
      */
 
-    /** @hide */
     @IntDef(flag = true, prefix = { "CONTENTS_" }, value = {
             CONTENTS_FILE_DESCRIPTOR,
     })

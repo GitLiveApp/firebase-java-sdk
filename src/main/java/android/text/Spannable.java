@@ -52,7 +52,7 @@ extends Spanned
      *
      * See {@link Spanned} for an explanation of what the flags mean.
      *
-     * @hide
+     * 
      */
     default void removeSpan(Object what, int flags) {
         removeSpan(what);
