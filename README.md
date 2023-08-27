@@ -6,6 +6,8 @@
 <br/>
 The Firebase Java SDK is a pure java port of the <a href="https://github.com/firebase/firebase-android-sdk">Firebase Android SDK</a> 
 to run in clientside java environments such as the desktop.
+<br/>
+<br/>
 
 Note this is different to the official [Firebase Admin Java SDK](https://github.com/firebase/firebase-admin-java) which enables access 
 to Firebase services from privileged environments (such as servers or cloud).
