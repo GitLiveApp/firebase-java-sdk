@@ -1,0 +1,9 @@
+{
+    "name": "Firebase Java SDK (unofficial)",
+    "platforms": ["Desktop"],
+    "content": "README.md",
+    "related": [
+      "GitLive/firebase-kotlin-sdk",
+      "firebase/firebase-android-sdk",
+    ]
+}
