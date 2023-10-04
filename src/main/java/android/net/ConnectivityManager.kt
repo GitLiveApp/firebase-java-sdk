@@ -25,7 +25,7 @@ class ConnectivityManager private constructor() {
         override fun onDataChange(data: DataSnapshot) {
             when (data.getValue(Boolean::class.java)) {
                 true -> onAvailable(null)
-                false -> onLost(null)
+                else -> onLost(null)
             }
         }
 

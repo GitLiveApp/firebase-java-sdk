@@ -243,7 +243,7 @@ class FirebaseAuth constructor(val app: FirebaseApp) : InternalAuthProvider {
         val source = TaskCompletionSource<GetTokenResult>()
         val user = user ?: return Tasks.forException(FirebaseNoSignedInUserException("Please sign in before trying to get a token."))
 
-        if (!forceRefresh && user.createdAt + user.expiresIn - 5*60 > System.currentTimeMillis() / 1000) {
+        if (!forceRefresh && user.createdAt + user.expiresIn*1000 - 5*60*1000 > System.currentTimeMillis() ) {
 //            Log.i("FirebaseAuth", "returning existing token for user ${user.uid} from getAccessToken")
             return Tasks.forResult(GetTokenResult(user.idToken, user.claims))
         }
