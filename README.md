@@ -81,6 +81,13 @@ FirebaseOptions options = new FirebaseOptions.Builder()
         .build();
 ```
 
+You can then pass this to the `initialize` function, along with a mock Android `context` supplied by the `firebase-java-sdk`, like so:
+```
+import android.app.Application
+
+val app = Firebase.initialize(new Application(), options)
+```
+
 ## Project status
 
 The following libraries are available for the various Firebase products.
