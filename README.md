@@ -82,7 +82,7 @@ FirebaseOptions options = new FirebaseOptions.Builder()
 ```
 
 You can then pass this to the `initialize` function, along with a mock Android `context` supplied by the `firebase-java-sdk`, like so:
-```
+```kotlin
 import android.app.Application
 
 val app = Firebase.initialize(new Application(), options)
