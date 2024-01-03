@@ -25,7 +25,7 @@ You can add the library via Gradle:
 
 ```kotlin
 dependencies {
-    implementation("dev.gitlive:firebase-java-sdk:0.1.2")
+    implementation("dev.gitlive:firebase-java-sdk:0.2.0")
 }
 ```
 
@@ -110,6 +110,7 @@ Currently, the following limitations are observed:
 * Firebase Auth implementation is minimal and only supports a small subset of the API:
   - `signInAnonymously`
   - `signInWithCustomToken`
+  - `signInWithEmailAndPassword`
   - `currentUser`
   - `getAccessToken`
   - `getUid`

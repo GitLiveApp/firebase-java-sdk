@@ -228,6 +228,39 @@ class FirebaseAuth constructor(val app: FirebaseApp) : InternalAuthProvider {
         return source.task
     }
 
+    fun signInWithEmailAndPassword(email: String, password: String): Task<AuthResult> {
+        val source = TaskCompletionSource<AuthResult>()
+        val body = RequestBody.create(
+            json,
+            JsonObject(mapOf("email" to JsonPrimitive(email), "password" to JsonPrimitive(password), "returnSecureToken" to JsonPrimitive(true))).toString()
+        )
+        val request = Request.Builder()
+            .url("https://www.googleapis.com/identitytoolkit/v3/relyingparty/verifyPassword?key=" + app.options.apiKey)
+            .post(body)
+            .build()
+        client.newCall(request).enqueue(object : Callback {
+
+            override fun onFailure(request: Request, e: IOException) {
+                source.setException(FirebaseException(e.toString(), e))
+            }
+
+            @Throws(IOException::class)
+            override fun onResponse(response: Response) {
+                if (!response.isSuccessful) {
+                    source.setException(FirebaseAuthInvalidUserException(
+                        response.message(),
+                        formatErrorMessage("verifyPassword", request, response)
+                    ))
+                } else {
+                    val body = response.body().use { it.string() }
+                    val user = FirebaseUserImpl(app, jsonParser.parseToJsonElement(body).jsonObject)
+                    refreshToken(user, source) { AuthResult { it } }
+                }
+            }
+        })
+        return source.task
+    }
+
     internal fun formatErrorMessage(title: String, request: Request, response: Response): String {
         return "$title API returned an error, " +
             "with url [${request.method()}] ${request.urlString()} ${request.body()} -- " +
@@ -363,7 +396,6 @@ class FirebaseAuth constructor(val app: FirebaseApp) : InternalAuthProvider {
         idTokenListeners.remove(listener)
     }
 
-    fun signInWithEmailAndPassword(email: String, password: String): Task<AuthResult> = TODO()
     fun sendPasswordResetEmail(email: String, settings: ActionCodeSettings?): Task<Unit> = TODO()
     fun createUserWithEmailAndPassword(email: String, password: String): Task<AuthResult> = TODO()
     fun signInWithCredential(authCredential: AuthCredential): Task<AuthResult> = TODO()
