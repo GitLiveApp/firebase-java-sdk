@@ -132,6 +132,8 @@ open class Context {
         return File(System.getProperty("java.io.tmpdir"))
     }
 
+    fun getDatabasePath(name: String): File = FirebasePlatform.firebasePlatform.getDatabasePath(name)
+
     companion object {
         @JvmStatic
         val CONNECTIVITY_SERVICE = "connectivity"

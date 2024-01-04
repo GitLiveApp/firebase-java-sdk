@@ -27,7 +27,7 @@ version = project.property("version") as String
 
 java {
     withSourcesJar()
-    withJavadocJar()
+//    withJavadocJar()
     sourceCompatibility = JavaVersion.VERSION_11
 }
 
@@ -149,6 +149,7 @@ dependencies {
     compileOnly("org.robolectric:android-all:12.1-robolectric-8229987")
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-swing:1.6.0")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.6.0")
     // firebase aars
     aar("com.google.firebase:firebase-firestore:24.10.0")
     aar("com.google.firebase:firebase-functions:20.4.0")
