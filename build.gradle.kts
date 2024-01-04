@@ -165,13 +165,11 @@ dependencies {
     implementation("com.squareup.okhttp:okhttp:2.7.5")
     implementation("com.squareup.okhttp3:okhttp:4.9.3")
     implementation("android.arch.lifecycle:common:1.1.1")
-    implementation("io.grpc:grpc-protobuf-lite:1.44.1")
-    implementation("io.grpc:grpc-stub:1.44.1")
+    implementation("io.grpc:grpc-protobuf-lite:1.52.1")
+    implementation("io.grpc:grpc-stub:1.52.1")
     implementation("androidx.collection:collection:1.2.0")
     implementation("androidx.lifecycle:lifecycle-common:2.4.0")
-    // gprc https://github.com/grpc/grpc-java/blob/master/SECURITY.md
-    implementation("io.grpc:grpc-netty:1.44.1")
-    implementation("io.netty:netty-tcnative-boringssl-static:2.0.51.Final")
+    implementation("io.grpc:grpc-okhttp:1.52.1")
 }
 
 tasks.named("publishToMavenLocal").configure {
