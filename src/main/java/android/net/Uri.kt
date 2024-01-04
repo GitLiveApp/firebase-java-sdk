@@ -31,4 +31,37 @@ class Uri(private val uri: URI) {
             start = end + 1
         } while (start < query.length)
         return Collections.unmodifiableSet(names)
+    }
+
+    fun getQueryParameter(key: String?): String? {
+        if (key == null) {
+            throw NullPointerException("key")
+        }
+        val query: String = uri.query ?: return null
+        val length = query.length
+        var start = 0
+        do {
+            val nextAmpersand = query.indexOf('&', start)
+            val end = if (nextAmpersand != -1) nextAmpersand else length
+            var separator = query.indexOf('=', start)
+            if (separator > end || separator == -1) {
+                separator = end
+            }
+            if (separator - start == key.length
+                && query.regionMatches(start, key, 0, key.length)
+            ) {
+                if (separator == end) {
+                    return ""
+                } else {
+                    return query.substring(separator + 1, end)
+                }
+            }
+            // Move start to end of name.
+            if (nextAmpersand != -1) {
+                start = nextAmpersand + 1
+            } else {
+                break
+            }
+        } while (true)
+        return null
     }}
