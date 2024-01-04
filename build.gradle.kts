@@ -16,8 +16,8 @@ plugins {
     `java-library`
     `maven-publish`
     signing
-    id("org.jetbrains.kotlin.jvm") version "1.6.10"
-    kotlin("plugin.serialization") version "1.6.10"
+    id("org.jetbrains.kotlin.jvm") version "1.7.10"
+    kotlin("plugin.serialization") version "1.7.10"
     id("org.jlleitschuh.gradle.ktlint") version "10.0.0"
     id("com.github.ben-manes.versions") version "0.42.0"
 }
@@ -150,20 +150,20 @@ dependencies {
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-swing:1.6.0")
     // firebase aars
-    aar("com.google.firebase:firebase-firestore:24.1.2")
-    aar("com.google.firebase:firebase-functions:20.1.0")
-    aar("com.google.firebase:firebase-database:20.0.5")
-    aar("com.google.firebase:firebase-config:21.1.0")
+    aar("com.google.firebase:firebase-firestore:24.10.0")
+    aar("com.google.firebase:firebase-functions:20.4.0")
+    aar("com.google.firebase:firebase-database:20.3.0")
+    aar("com.google.firebase:firebase-config:21.6.0")
+    aar("com.google.firebase:firebase-installations:17.2.0")
     // extracted aar dependencies
     api(fileTree(mapOf("dir" to "build/jar", "include" to listOf("*.jar"))))
     // polyfill dependencies
-    implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.0")
+    implementation("org.jetbrains.kotlin:kotlin-stdlib")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-core:1.3.2")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.3.2")
-    // firebase dependencies
     implementation("com.squareup.okhttp:okhttp:2.7.5")
-    implementation("com.squareup.okhttp3:okhttp:4.9.3")
+    // firebase dependencies
     implementation("android.arch.lifecycle:common:1.1.1")
     implementation("io.grpc:grpc-protobuf-lite:1.52.1")
     implementation("io.grpc:grpc-stub:1.52.1")

@@ -37,6 +37,7 @@ public class PackageManager {
                 data.put("com.google.firebase.components:com.google.firebase.firestore.FirestoreRegistrar", "com.google.firebase.components.ComponentRegistrar");
                 data.put("com.google.firebase.components:com.google.firebase.auth.FirebaseAuthRegistrar", "com.google.firebase.components.ComponentRegistrar");
                 data.put("com.google.firebase.components:com.google.firebase.functions.FunctionsRegistrar", "com.google.firebase.components.ComponentRegistrar");
+                data.put("com.google.firebase.components:com.google.firebase.installations.FirebaseInstallationsRegistrar", "com.google.firebase.components.ComponentRegistrar");
                 data.put("com.google.firebase.components:com.google.firebase.iid.Registrar", "com.google.firebase.components.ComponentRegistrar");
                 return new ServiceInfo(data);
         }
@@ -67,6 +68,7 @@ public class PackageManager {
             case "android.hardware.type.embedded":
             case "android.hardware.type.television":
             case "android.hardware.type.automotive":
+            case "cn.google":
                 return false;
         }
         throw new IllegalArgumentException(name);
