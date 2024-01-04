@@ -25,7 +25,7 @@ You can add the library via Gradle:
 
 ```kotlin
 dependencies {
-    implementation("dev.gitlive:firebase-java-sdk:0.2.0")
+    implementation("dev.gitlive:firebase-java-sdk:0.3.0")
 }
 ```
 
@@ -35,7 +35,7 @@ Or Maven:
 <dependency>
     <groupId>dev.gitlive</groupId>
     <artifactId>firebase-java-sdk</artifactId>
-    <version>0.1.2</version>
+    <version>0.3.0</version>
 </dependency>
 ```
 
@@ -95,9 +95,11 @@ The following libraries are available for the various Firebase products.
 | Service or Product	                                                          | Port of Android version | 
 |---------------------------------------------------------------------------------|:------------------------|
 | [Authentication](https://firebase.google.com/docs/auth)                         |  N/A[^1]                |
-| [Cloud Firestore](https://firebase.google.com/docs/firestore)                   | `24.1.2`                |
-| [Realtime Database](https://firebase.google.com/docs/database)                  | `20.1.0`                |
-| [Cloud Functions](https://firebase.google.com/docs/functions)                   | `20.1.0`                |
+| [Cloud Firestore](https://firebase.google.com/docs/firestore)                   | `24.10.0`               |
+| [Realtime Database](https://firebase.google.com/docs/database)                  | `20.3.0`                |
+| [Cloud Functions](https://firebase.google.com/docs/functions)                   | `20.4.0`                |
+| [Remote Config](https://firebase.google.com/docs/remote-config)                 | `21.6.0`                |
+| [Installations](https://firebase.google.com/docs/projects/manage-installations) | `17.2.0`                |
 
 [^1]: Google has not open-sourced the Firebase Auth implementation for Android so a basic implementation using the Rest API is provided.
 
@@ -119,11 +121,10 @@ Currently, the following limitations are observed:
   - `addAuthStateListener`
   - `removeAuthStateListener`
   - `signOut`
-* Cloud Firestore does not support [Offline Persistence](https://firebase.google.com/docs/firestore/manage-data/enable-offline#configure_offline_persistence) or [SSL](https://firebase.google.com/docs/reference/android/com/google/firebase/firestore/FirebaseFirestoreSettings.Builder#setSslEnabled(boolean)), and should be setup as follows:
+* Cloud Firestore does not support [Offline Persistence](https://firebase.google.com/docs/firestore/manage-data/enable-offline#configure_offline_persistence) and should be setup as follows:
 ```java
 FirebaseFirestoreSettings settings = new FirebaseFirestoreSettings.Builder(db.getFirestoreSettings())
     .setPersistenceEnabled(false)
-    .setSslEnabled(false)
     .build();
 db.setFirestoreSettings(settings);
 ```
