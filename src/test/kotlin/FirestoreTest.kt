@@ -6,8 +6,10 @@ import com.google.firebase.firestore.firestore
 import com.google.firebase.initialize
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.tasks.await
+import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Test
+import java.io.File
 
 
 class FirestoreTest {
@@ -19,6 +21,7 @@ class FirestoreTest {
             override fun retrieve(key: String) = storage[key]
             override fun clear(key: String) { storage.remove(key) }
             override fun log(msg: String) = println(msg)
+            override fun getDatabasePath(name: String) = File("./build/$name")
         })
         val options = FirebaseOptions.Builder()
             .setProjectId("my-firebase-project")
@@ -28,10 +31,16 @@ class FirestoreTest {
             // setStorageBucket(...)
             .build()
         Firebase.initialize(Application(), options)
+        Firebase.firestore.disableNetwork()
     }
 
     @Test
     fun testFirestore(): Unit = runBlocking {
-        Firebase.firestore.document("sally/jim").get().await()
+        val data = Data("jim")
+        val doc = Firebase.firestore.document("sally/jim")
+        doc.set(data)
+        assertEquals(data, doc.get().await().toObject(Data::class.java))
     }
+
+    data class Data(val name: String = "none")
 }

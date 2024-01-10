@@ -20,8 +20,6 @@
 
 package android.database.sqlite;
 
-import android.database.sqlite.CloseGuard;
-
 import android.database.Cursor;
 import android.database.CursorWindow;
 import android.database.DatabaseUtils;
@@ -33,12 +31,13 @@ import android.os.SystemClock;
 import android.util.Log;
 import android.util.LruCache;
 import android.util.Printer;
+import org.sqlite.core.NativeDB;
+import org.sqlite.core.NativeKt;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.Map;
-import java.util.regex.Pattern;
 
 /**
  * Represents a SQLite database connection.
@@ -109,7 +108,7 @@ public final class SQLiteConnection implements CancellationSignal.OnCancelListen
     private final OperationLog mRecentOperations = new OperationLog();
 
     // The native SQLiteConnection pointer.  (FOR INTERNAL USE ONLY)
-    private long mConnectionPtr;
+    private NativeDB mConnectionPtr;
 
     private boolean mOnlyAllowReadOnlyOperations;
 
@@ -118,49 +117,8 @@ public final class SQLiteConnection implements CancellationSignal.OnCancelListen
     // times we have attempted to attach a cancellation signal to the connection so that
     // we can ensure that we detach the signal at the right time.
     private int mCancellationSignalAttachCount;
-
-    private static native long nativeOpen(String path, int openFlags, String label,
-            boolean enableTrace, boolean enableProfile);
-    private static native void nativeClose(long connectionPtr);
-    private static native void nativeRegisterCustomFunction(long connectionPtr,
-            SQLiteCustomFunction function);
-    private static native void nativeRegisterLocalizedCollators(long connectionPtr, String locale);
-    private static native long nativePrepareStatement(long connectionPtr, String sql);
-    private static native void nativeFinalizeStatement(long connectionPtr, long statementPtr);
-    private static native int nativeGetParameterCount(long connectionPtr, long statementPtr);
-    private static native boolean nativeIsReadOnly(long connectionPtr, long statementPtr);
-    private static native int nativeGetColumnCount(long connectionPtr, long statementPtr);
-    private static native String nativeGetColumnName(long connectionPtr, long statementPtr,
-            int index);
-    private static native void nativeBindNull(long connectionPtr, long statementPtr,
-            int index);
-    private static native void nativeBindLong(long connectionPtr, long statementPtr,
-            int index, long value);
-    private static native void nativeBindDouble(long connectionPtr, long statementPtr,
-            int index, double value);
-    private static native void nativeBindString(long connectionPtr, long statementPtr,
-            int index, String value);
-    private static native void nativeBindBlob(long connectionPtr, long statementPtr,
-            int index, byte[] value);
-    private static native void nativeResetStatementAndClearBindings(
-            long connectionPtr, long statementPtr);
-    private static native void nativeExecute(long connectionPtr, long statementPtr);
-    private static native long nativeExecuteForLong(long connectionPtr, long statementPtr);
-    private static native String nativeExecuteForString(long connectionPtr, long statementPtr);
-    private static native int nativeExecuteForBlobFileDescriptor(
-            long connectionPtr, long statementPtr);
-    private static native int nativeExecuteForChangedRowCount(long connectionPtr, long statementPtr);
-    private static native long nativeExecuteForLastInsertedRowId(
-            long connectionPtr, long statementPtr);
-    private static native long nativeExecuteForCursorWindow(
-            long connectionPtr, long statementPtr, CursorWindow win,
-            int startPos, int requiredPos, boolean countAllRows);
-    private static native int nativeGetDbLookaside(long connectionPtr);
-    private static native void nativeCancel(long connectionPtr);
-    private static native void nativeResetCancel(long connectionPtr, boolean cancelable);
-
-    private static native boolean nativeHasCodec();
-    public static boolean hasCodec(){ return nativeHasCodec(); }
+    
+    public static boolean hasCodec(){ return NativeKt.HasCodec(); }
 
     private SQLiteConnection(SQLiteConnectionPool pool,
             SQLiteDatabaseConfiguration configuration,
@@ -178,7 +136,7 @@ public final class SQLiteConnection implements CancellationSignal.OnCancelListen
     @Override
     protected void finalize() throws Throwable {
         try {
-            if (mPool != null && mConnectionPtr != 0) {
+            if (mPool != null && mConnectionPtr != null) {
                 mPool.onConnectionLeaked();
             }
 
@@ -211,7 +169,7 @@ public final class SQLiteConnection implements CancellationSignal.OnCancelListen
     }
 
     private void open() {
-        mConnectionPtr = nativeOpen(mConfiguration.path, mConfiguration.openFlags,
+        mConnectionPtr = NativeKt.Open(mConfiguration.path, mConfiguration.openFlags,
                 mConfiguration.label,
                 SQLiteDebug.DEBUG_SQL_STATEMENTS, SQLiteDebug.DEBUG_SQL_TIME);
 
@@ -219,7 +177,7 @@ public final class SQLiteConnection implements CancellationSignal.OnCancelListen
         setForeignKeyModeFromConfiguration();
         setJournalSizeLimit();
         setAutoCheckpointInterval();
-        if( !nativeHasCodec() ){
+        if(!NativeKt.HasCodec() ){
             setWalModeFromConfiguration();
             setLocaleFromConfiguration();
         }
@@ -227,7 +185,7 @@ public final class SQLiteConnection implements CancellationSignal.OnCancelListen
         final int functionCount = mConfiguration.customFunctions.size();
         for (int i = 0; i < functionCount; i++) {
             SQLiteCustomFunction function = mConfiguration.customFunctions.get(i);
-            nativeRegisterCustomFunction(mConnectionPtr, function);
+            NativeKt.RegisterCustomFunction(mConnectionPtr, function);
         }
     }
 
@@ -239,12 +197,12 @@ public final class SQLiteConnection implements CancellationSignal.OnCancelListen
             mCloseGuard.close();
         }
 
-        if (mConnectionPtr != 0) {
+        if (mConnectionPtr != null) {
             final int cookie = mRecentOperations.beginOperation("close", null, null);
             try {
                 mPreparedStatementCache.evictAll();
-                nativeClose(mConnectionPtr);
-                mConnectionPtr = 0;
+                NativeKt.Close(mConnectionPtr);
+                mConnectionPtr = null;
             } finally {
                 mRecentOperations.endOperation(cookie);
             }
@@ -364,7 +322,7 @@ public final class SQLiteConnection implements CancellationSignal.OnCancelListen
 
         // Register the localized collators.
         final String newLocale = mConfiguration.locale.toString();
-        nativeRegisterLocalizedCollators(mConnectionPtr, newLocale);
+        NativeKt.RegisterLocalizedCollators(mConnectionPtr, newLocale);
 
         // If the database is read-only, we cannot modify the android metadata table
         // or existing indexes.
@@ -390,7 +348,7 @@ public final class SQLiteConnection implements CancellationSignal.OnCancelListen
                 execute("DELETE FROM android_metadata", null, null);
                 execute("INSERT INTO android_metadata (locale) VALUES(?)",
                         new Object[] { newLocale }, null);
-                execute("REINDEX LOCALIZED", null, null);
+//                execute("REINDEX LOCALIZED", null, null);
                 success = true;
             } finally {
                 execute(success ? "COMMIT" : "ROLLBACK", null, null);
@@ -402,7 +360,7 @@ public final class SQLiteConnection implements CancellationSignal.OnCancelListen
     }
 
     public void enableLocalizedCollators(){
-      if( nativeHasCodec() ){
+      if( NativeKt.HasCodec() ){
 	setLocaleFromConfiguration();
       }
     }
@@ -416,7 +374,7 @@ public final class SQLiteConnection implements CancellationSignal.OnCancelListen
         for (int i = 0; i < functionCount; i++) {
             SQLiteCustomFunction function = configuration.customFunctions.get(i);
             if (!mConfiguration.customFunctions.contains(function)) {
-                nativeRegisterCustomFunction(mConnectionPtr, function);
+                NativeKt.RegisterCustomFunction(mConnectionPtr, function);
             }
         }
 
@@ -516,14 +474,14 @@ public final class SQLiteConnection implements CancellationSignal.OnCancelListen
                     outStatementInfo.numParameters = statement.mNumParameters;
                     outStatementInfo.readOnly = statement.mReadOnly;
 
-                    final int columnCount = nativeGetColumnCount(
+                    final int columnCount = NativeKt.GetColumnCount(
                             mConnectionPtr, statement.mStatementPtr);
                     if (columnCount == 0) {
                         outStatementInfo.columnNames = EMPTY_STRING_ARRAY;
                     } else {
                         outStatementInfo.columnNames = new String[columnCount];
                         for (int i = 0; i < columnCount; i++) {
-                            outStatementInfo.columnNames[i] = nativeGetColumnName(
+                            outStatementInfo.columnNames[i] = NativeKt.GetColumnName(
                                     mConnectionPtr, statement.mStatementPtr, i);
                         }
                     }
@@ -565,7 +523,7 @@ public final class SQLiteConnection implements CancellationSignal.OnCancelListen
                 applyBlockGuardPolicy(statement);
                 attachCancellationSignal(cancellationSignal);
                 try {
-                    nativeExecute(mConnectionPtr, statement.mStatementPtr);
+                    NativeKt.Execute(mConnectionPtr, statement.mStatementPtr);
                 } finally {
                     detachCancellationSignal(cancellationSignal);
                 }
@@ -608,7 +566,7 @@ public final class SQLiteConnection implements CancellationSignal.OnCancelListen
                 applyBlockGuardPolicy(statement);
                 attachCancellationSignal(cancellationSignal);
                 try {
-                    return nativeExecuteForLong(mConnectionPtr, statement.mStatementPtr);
+                    return NativeKt.ExecuteForLong(mConnectionPtr, statement.mStatementPtr);
                 } finally {
                     detachCancellationSignal(cancellationSignal);
                 }
@@ -651,7 +609,7 @@ public final class SQLiteConnection implements CancellationSignal.OnCancelListen
                 applyBlockGuardPolicy(statement);
                 attachCancellationSignal(cancellationSignal);
                 try {
-                    return nativeExecuteForString(mConnectionPtr, statement.mStatementPtr);
+                    return NativeKt.ExecuteForString(mConnectionPtr, statement.mStatementPtr);
                 } finally {
                     detachCancellationSignal(cancellationSignal);
                 }
@@ -697,7 +655,7 @@ public final class SQLiteConnection implements CancellationSignal.OnCancelListen
                 applyBlockGuardPolicy(statement);
                 attachCancellationSignal(cancellationSignal);
                 try {
-                    int fd = nativeExecuteForBlobFileDescriptor(
+                    int fd = NativeKt.ExecuteForBlobFileDescriptor(
                             mConnectionPtr, statement.mStatementPtr);
                     return fd >= 0 ? ParcelFileDescriptor.adoptFd(fd) : null;
                 } finally {
@@ -744,7 +702,7 @@ public final class SQLiteConnection implements CancellationSignal.OnCancelListen
                 applyBlockGuardPolicy(statement);
                 attachCancellationSignal(cancellationSignal);
                 try {
-                    changedRows = nativeExecuteForChangedRowCount(
+                    changedRows = NativeKt.ExecuteForChangedRowCount(
                             mConnectionPtr, statement.mStatementPtr);
                     return changedRows;
                 } finally {
@@ -792,7 +750,7 @@ public final class SQLiteConnection implements CancellationSignal.OnCancelListen
                 applyBlockGuardPolicy(statement);
                 attachCancellationSignal(cancellationSignal);
                 try {
-                    return nativeExecuteForLastInsertedRowId(
+                    return NativeKt.ExecuteForLastInsertedRowId(
                             mConnectionPtr, statement.mStatementPtr);
                 } finally {
                     detachCancellationSignal(cancellationSignal);
@@ -855,7 +813,7 @@ public final class SQLiteConnection implements CancellationSignal.OnCancelListen
                     applyBlockGuardPolicy(statement);
                     attachCancellationSignal(cancellationSignal);
                     try {
-                        final long result = nativeExecuteForCursorWindow(
+                        final long result = NativeKt.ExecuteForCursorWindow(
                                 mConnectionPtr, statement.mStatementPtr, window,
                                 startPos, requiredPos, countAllRows);
                         actualPos = (int)(result >> 32);
@@ -899,11 +857,11 @@ public final class SQLiteConnection implements CancellationSignal.OnCancelListen
             skipCache = true;
         }
 
-        final long statementPtr = nativePrepareStatement(mConnectionPtr, sql);
+        final long statementPtr = NativeKt.PrepareStatement(mConnectionPtr, sql);
         try {
-            final int numParameters = nativeGetParameterCount(mConnectionPtr, statementPtr);
+            final int numParameters = NativeKt.GetParameterCount(mConnectionPtr, statementPtr);
             final int type = DatabaseUtils.getSqlStatementType(sql);
-            final boolean readOnly = nativeIsReadOnly(mConnectionPtr, statementPtr);
+            final boolean readOnly = NativeKt.IsReadOnly(mConnectionPtr, statementPtr);
             statement = obtainPreparedStatement(sql, statementPtr, numParameters, type, readOnly);
             if (!skipCache && isCacheable(type)) {
                 mPreparedStatementCache.put(sql, statement);
@@ -913,7 +871,7 @@ public final class SQLiteConnection implements CancellationSignal.OnCancelListen
             // Finalize the statement if an exception occurred and we did not add
             // it to the cache.  If it is already in the cache, then leave it there.
             if (statement == null || !statement.mInCache) {
-                nativeFinalizeStatement(mConnectionPtr, statementPtr);
+                NativeKt.FinalizeStatement(mConnectionPtr, statementPtr);
             }
             throw ex;
         }
@@ -925,7 +883,7 @@ public final class SQLiteConnection implements CancellationSignal.OnCancelListen
         statement.mInUse = false;
         if (statement.mInCache) {
             try {
-                nativeResetStatementAndClearBindings(mConnectionPtr, statement.mStatementPtr);
+                NativeKt.ResetStatementAndClearBindings(mConnectionPtr, statement.mStatementPtr);
             } catch (SQLiteException ex) {
                 // The statement could not be reset due to an error.  Remove it from the cache.
                 // When remove() is called, the cache will invoke its entryRemoved() callback,
@@ -945,7 +903,7 @@ public final class SQLiteConnection implements CancellationSignal.OnCancelListen
     }
 
     private void finalizePreparedStatement(PreparedStatement statement) {
-        nativeFinalizeStatement(mConnectionPtr, statement.mStatementPtr);
+        NativeKt.FinalizeStatement(mConnectionPtr, statement.mStatementPtr);
         recyclePreparedStatement(statement);
     }
 
@@ -956,7 +914,7 @@ public final class SQLiteConnection implements CancellationSignal.OnCancelListen
             mCancellationSignalAttachCount += 1;
             if (mCancellationSignalAttachCount == 1) {
                 // Reset cancellation flag before executing the statement.
-                nativeResetCancel(mConnectionPtr, true /*cancelable*/);
+                NativeKt.ResetCancel(mConnectionPtr, true /*cancelable*/);
 
                 // After this point, onCancel() may be called concurrently.
                 cancellationSignal.setOnCancelListener(this);
@@ -974,7 +932,7 @@ public final class SQLiteConnection implements CancellationSignal.OnCancelListen
                 cancellationSignal.setOnCancelListener(null);
 
                 // Reset cancellation flag after executing the statement.
-                nativeResetCancel(mConnectionPtr, false /*cancelable*/);
+                NativeKt.ResetCancel(mConnectionPtr, false /*cancelable*/);
             }
         }
     }
@@ -986,7 +944,7 @@ public final class SQLiteConnection implements CancellationSignal.OnCancelListen
     // that the SQLite connection is still alive.
     @Override
     public void onCancel() {
-        nativeCancel(mConnectionPtr);
+        NativeKt.Cancel(mConnectionPtr);
     }
 
     private void bindArguments(PreparedStatement statement, Object[] bindArgs) {
@@ -1005,28 +963,28 @@ public final class SQLiteConnection implements CancellationSignal.OnCancelListen
             final Object arg = bindArgs[i];
             switch (DatabaseUtils.getTypeOfObject(arg)) {
                 case Cursor.FIELD_TYPE_NULL:
-                    nativeBindNull(mConnectionPtr, statementPtr, i + 1);
+                    NativeKt.BindNull(mConnectionPtr, statementPtr, i + 1);
                     break;
                 case Cursor.FIELD_TYPE_INTEGER:
-                    nativeBindLong(mConnectionPtr, statementPtr, i + 1,
+                    NativeKt.BindLong(mConnectionPtr, statementPtr, i + 1,
                             ((Number)arg).longValue());
                     break;
                 case Cursor.FIELD_TYPE_FLOAT:
-                    nativeBindDouble(mConnectionPtr, statementPtr, i + 1,
+                    NativeKt.BindDouble(mConnectionPtr, statementPtr, i + 1,
                             ((Number)arg).doubleValue());
                     break;
                 case Cursor.FIELD_TYPE_BLOB:
-                    nativeBindBlob(mConnectionPtr, statementPtr, i + 1, (byte[])arg);
+                    NativeKt.BindBlob(mConnectionPtr, statementPtr, i + 1, (byte[])arg);
                     break;
                 case Cursor.FIELD_TYPE_STRING:
                 default:
                     if (arg instanceof Boolean) {
                         // Provide compatibility with legacy applications which may pass
                         // Boolean values in bind args.
-                        nativeBindLong(mConnectionPtr, statementPtr, i + 1,
+                        NativeKt.BindLong(mConnectionPtr, statementPtr, i + 1,
                                 ((Boolean)arg).booleanValue() ? 1 : 0);
                     } else {
-                        nativeBindString(mConnectionPtr, statementPtr, i + 1, arg.toString());
+                        NativeKt.BindString(mConnectionPtr, statementPtr, i + 1, arg.toString());
                     }
                     break;
             }
@@ -1078,7 +1036,7 @@ public final class SQLiteConnection implements CancellationSignal.OnCancelListen
     void dumpUnsafe(Printer printer, boolean verbose) {
         printer.println("Connection #" + mConnectionId + ":");
         if (verbose) {
-            printer.println("  connectionPtr: 0x" + Long.toHexString(mConnectionPtr));
+            printer.println("  connectionPtr: 0x" + Long.toHexString(mConnectionPtr.hashCode()));
         }
         printer.println("  isPrimaryConnection: " + mIsPrimaryConnection);
         printer.println("  onlyAllowReadOnlyOperations: " + mOnlyAllowReadOnlyOperations);
@@ -1115,7 +1073,7 @@ public final class SQLiteConnection implements CancellationSignal.OnCancelListen
      */
     void collectDbStats(ArrayList<DbStats> dbStatsList) {
         // Get information about the main database.
-        int lookaside = nativeGetDbLookaside(mConnectionPtr);
+        int lookaside = NativeKt.GetDbLookaside(mConnectionPtr);
         long pageCount = 0;
         long pageSize = 0;
         try {

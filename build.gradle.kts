@@ -164,6 +164,7 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-core:1.3.2")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.3.2")
     implementation("com.squareup.okhttp:okhttp:2.7.5")
+    implementation("org.xerial:sqlite-jdbc:3.44.1.0")
     // firebase dependencies
     implementation("android.arch.lifecycle:common:1.1.1")
     implementation("io.grpc:grpc-protobuf-lite:1.52.1")

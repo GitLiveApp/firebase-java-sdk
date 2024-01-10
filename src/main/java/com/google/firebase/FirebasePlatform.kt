@@ -23,5 +23,5 @@ abstract class FirebasePlatform {
 
     abstract fun log(msg: String)
 
-    open fun getDatabasePath(name: String): File = File(System.getProperty("java.io.tmpdir"))
+    open fun getDatabasePath(name: String): File = File("${System.getProperty("java.io.tmpdir")}${File.separatorChar}$name")
 }

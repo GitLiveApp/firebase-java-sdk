@@ -273,7 +273,6 @@ class FirebaseAuth constructor(val app: FirebaseApp) : InternalAuthProvider {
     }
 
     override fun getAccessToken(forceRefresh: Boolean): Task<GetTokenResult> {
-        val source = TaskCompletionSource<GetTokenResult>()
         val user = user ?: return Tasks.forException(FirebaseNoSignedInUserException("Please sign in before trying to get a token."))
 
         if (!forceRefresh && user.createdAt + user.expiresIn*1000 - 5*60*1000 > System.currentTimeMillis() ) {
@@ -281,6 +280,7 @@ class FirebaseAuth constructor(val app: FirebaseApp) : InternalAuthProvider {
             return Tasks.forResult(GetTokenResult(user.idToken, user.claims))
         }
 //        Log.i("FirebaseAuth", "Refreshing access token forceRefresh=$forceRefresh createdAt=${user.createdAt} expiresIn=${user.expiresIn}")
+        val source = TaskCompletionSource<GetTokenResult>()
         refreshToken(user, source) { GetTokenResult(it.idToken, user.claims) }
         return source.task
     }
