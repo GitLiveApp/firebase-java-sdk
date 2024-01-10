@@ -22,16 +22,19 @@ import android.util.ArraySet;
 import dalvik.system.VMRuntime;
 import libcore.util.EmptyArray;
 
+import java.io.File;
 import java.lang.reflect.Array;
 import java.util.*;
+import java.util.function.IntFunction;
 
 /**
- * ArrayUtils contains some methods that you can call to find out
- * the most efficient increments by which to grow arrays.
+ * Static utility methods for arrays that aren't already included in {@link java.util.Arrays}.
  */
 public class ArrayUtils {
     private static final int CACHE_SIZE = 73;
     private static Object[] sCache = new Object[CACHE_SIZE];
+
+    public static final File[] EMPTY_FILE = new File[0];
 
     private ArrayUtils() { /* cannot be instantiated */ }
 
@@ -120,6 +123,13 @@ public class ArrayUtils {
     }
 
     /**
+     * Returns the same array or an empty one if it's null.
+     */
+    public static @NonNull <T> T[] emptyIfNull(@Nullable T[] items, Class<T> kind) {
+        return items != null ? items : emptyArray(kind);
+    }
+
+    /**
      * Checks if given array is null or has zero elements.
      */
     public static boolean isEmpty(@Nullable Collection<?> array) {
@@ -180,6 +190,13 @@ public class ArrayUtils {
      */
     public static int size(@Nullable Collection<?> collection) {
         return collection == null ? 0 : collection.size();
+    }
+
+    /**
+     * Length of the given map or 0 if it's null.
+     */
+    public static int size(@Nullable Map<?, ?> map) {
+        return map == null ? 0 : map.size();
     }
 
     /**
@@ -283,10 +300,24 @@ public class ArrayUtils {
         return total;
     }
 
+    /**
+     * @deprecated use {@code IntArray} instead
+     */
+    @Deprecated
     public static int[] convertToIntArray(List<Integer> list) {
         int[] array = new int[list.size()];
         for (int i = 0; i < list.size(); i++) {
             array[i] = list.get(i);
+        }
+        return array;
+    }
+
+    @NonNull
+    public static int[] convertToIntArray(@NonNull ArraySet<Integer> set) {
+        final int size = set.size();
+        int[] array = new int[size];
+        for (int i = 0; i < size; i++) {
+            array[i] = set.valueAt(i);
         }
         return array;
     }
@@ -298,6 +329,81 @@ public class ArrayUtils {
             array[i] = (long) intArray[i];
         }
         return array;
+    }
+
+    /**
+     * Returns the concatenation of the given arrays.  Only works for object arrays, not for
+     * primitive arrays.  See {@link #concat(byte[]...)} for a variant that works on byte arrays.
+     *
+     * @param kind The class of the array elements
+     * @param arrays The arrays to concatenate.  Null arrays are treated as empty.
+     * @param <T> The class of the array elements (inferred from kind).
+     * @return A single array containing all the elements of the parameter arrays.
+     */
+    @SuppressWarnings("unchecked")
+    public static @NonNull <T> T[] concat(Class<T> kind, @Nullable T[]... arrays) {
+        if (arrays == null || arrays.length == 0) {
+            return createEmptyArray(kind);
+        }
+
+        int totalLength = 0;
+        for (T[] item : arrays) {
+            if (item == null) {
+                continue;
+            }
+
+            totalLength += item.length;
+        }
+
+        // Optimization for entirely empty arrays.
+        if (totalLength == 0) {
+            return createEmptyArray(kind);
+        }
+
+        final T[] all = (T[]) Array.newInstance(kind, totalLength);
+        int pos = 0;
+        for (T[] item : arrays) {
+            if (item == null || item.length == 0) {
+                continue;
+            }
+            System.arraycopy(item, 0, all, pos, item.length);
+            pos += item.length;
+        }
+        return all;
+    }
+
+    private static @NonNull <T> T[] createEmptyArray(Class<T> kind) {
+        if (kind == String.class) {
+            return (T[]) EmptyArray.STRING;
+        } else if (kind == Object.class) {
+            return (T[]) EmptyArray.OBJECT;
+        }
+
+        return (T[]) Array.newInstance(kind, 0);
+    }
+
+    /**
+     * Returns the concatenation of the given byte arrays.  Null arrays are treated as empty.
+     */
+    public static @NonNull byte[] concat(@Nullable byte[]... arrays) {
+        if (arrays == null) {
+            return new byte[0];
+        }
+        int totalLength = 0;
+        for (byte[] a : arrays) {
+            if (a != null) {
+                totalLength += a.length;
+            }
+        }
+        final byte[] result = new byte[totalLength];
+        int pos = 0;
+        for (byte[] a : arrays) {
+            if (a != null) {
+                System.arraycopy(a, 0, result, pos, a.length);
+                pos += a.length;
+            }
+        }
+        return result;
     }
 
     /**
@@ -314,7 +420,7 @@ public class ArrayUtils {
      */
     @SuppressWarnings("unchecked")
     public static @NonNull <T> T[] appendElement(Class<T> kind, @Nullable T[] array, T element,
-            boolean allowDuplicates) {
+                                                 boolean allowDuplicates) {
         final T[] result;
         final int end;
         if (array != null) {
@@ -357,7 +463,7 @@ public class ArrayUtils {
      * Adds value to given array.
      */
     public static @NonNull int[] appendInt(@Nullable int[] cur, int val,
-            boolean allowDuplicates) {
+                                           boolean allowDuplicates) {
         if (cur == null) {
             return new int[] { val };
         }
@@ -434,7 +540,7 @@ public class ArrayUtils {
      * behavior.
      */
     public static @NonNull long[] appendLong(@Nullable long[] cur, long val,
-            boolean allowDuplicates) {
+                                             boolean allowDuplicates) {
         if (cur == null) {
             return new long[] { val };
         }
@@ -487,6 +593,13 @@ public class ArrayUtils {
         return (array != null) ? array.clone() : null;
     }
 
+    /**
+     * Clones an array or returns null if the array is null.
+     */
+    public static @Nullable <T> T[] cloneOrNull(@Nullable T[] array) {
+        return (array != null) ? array.clone() : null;
+    }
+
     public static @Nullable <T> ArraySet<T> cloneOrNull(@Nullable ArraySet<T> array) {
         return (array != null) ? new ArraySet<T>(array) : null;
     }
@@ -496,6 +609,20 @@ public class ArrayUtils {
             cur = new ArraySet<>();
         }
         cur.add(val);
+        return cur;
+    }
+
+    /**
+     * Similar to {@link Set#addAll(Collection)}}, but with support for set values of {@code null}.
+     */
+    public static @NonNull <T> ArraySet<T> addAll(@Nullable ArraySet<T> cur,
+                                                  @Nullable Collection<T> val) {
+        if (cur == null) {
+            cur = new ArraySet<>();
+        }
+        if (val != null) {
+            cur.addAll(val);
+        }
         return cur;
     }
 
@@ -516,6 +643,14 @@ public class ArrayUtils {
             cur = new ArrayList<>();
         }
         cur.add(val);
+        return cur;
+    }
+
+    public static @NonNull <T> ArrayList<T> add(@Nullable ArrayList<T> cur, int index, T val) {
+        if (cur == null) {
+            cur = new ArrayList<>();
+        }
+        cur.add(index, val);
         return cur;
     }
 
@@ -617,5 +752,178 @@ public class ArrayUtils {
 
     public static @NonNull String[] defeatNullable(@Nullable String[] val) {
         return (val != null) ? val : EmptyArray.STRING;
+    }
+
+    public static @NonNull File[] defeatNullable(@Nullable File[] val) {
+        return (val != null) ? val : EMPTY_FILE;
+    }
+
+    /**
+     * Throws {@link ArrayIndexOutOfBoundsException} if the index is out of bounds.
+     *
+     * @param len length of the array. Must be non-negative
+     * @param index the index to check
+     * @throws ArrayIndexOutOfBoundsException if the {@code index} is out of bounds of the array
+     */
+    public static void checkBounds(int len, int index) {
+        if (index < 0 || len <= index) {
+            throw new ArrayIndexOutOfBoundsException("length=" + len + "; index=" + index);
+        }
+    }
+
+    /**
+     * Throws {@link ArrayIndexOutOfBoundsException} if the range is out of bounds.
+     * @param len length of the array. Must be non-negative
+     * @param offset start index of the range. Must be non-negative
+     * @param count length of the range. Must be non-negative
+     * @throws ArrayIndexOutOfBoundsException if the range from {@code offset} with length
+     * {@code count} is out of bounds of the array
+     */
+    public static void throwsIfOutOfBounds(int len, int offset, int count) {
+        if (len < 0) {
+            throw new ArrayIndexOutOfBoundsException("Negative length: " + len);
+        }
+
+        if ((offset | count) < 0 || offset > len - count) {
+            throw new ArrayIndexOutOfBoundsException(
+                    "length=" + len + "; regionStart=" + offset + "; regionLength=" + count);
+        }
+    }
+
+    /**
+     * Returns an array with values from {@code val} minus {@code null} values
+     *
+     * @param arrayConstructor typically {@code T[]::new} e.g. {@code String[]::new}
+     */
+    public static <T> T[] filterNotNull(T[] val, IntFunction<T[]> arrayConstructor) {
+        int nullCount = 0;
+        int size = size(val);
+        for (int i = 0; i < size; i++) {
+            if (val[i] == null) {
+                nullCount++;
+            }
+        }
+        if (nullCount == 0) {
+            return val;
+        }
+        T[] result = arrayConstructor.apply(size - nullCount);
+        int outIdx = 0;
+        for (int i = 0; i < size; i++) {
+            if (val[i] != null) {
+                result[outIdx++] = val[i];
+            }
+        }
+        return result;
+    }
+
+    /**
+     * Returns an array containing elements from the given one that match the given predicate.
+     * The returned array may, in some cases, be the reference to the input array.
+     */
+    public static @Nullable <T> T[] filter(@Nullable T[] items,
+                                           @NonNull IntFunction<T[]> arrayConstructor,
+                                           @NonNull java.util.function.Predicate<T> predicate) {
+        if (isEmpty(items)) {
+            return items;
+        }
+
+        int matchesCount = 0;
+        int size = size(items);
+        final boolean[] tests = new boolean[size];
+        for (int i = 0; i < size; i++) {
+            tests[i] = predicate.test(items[i]);
+            if (tests[i]) {
+                matchesCount++;
+            }
+        }
+        if (matchesCount == items.length) {
+            return items;
+        }
+        T[] result = arrayConstructor.apply(matchesCount);
+        if (matchesCount == 0) {
+            return result;
+        }
+        int outIdx = 0;
+        for (int i = 0; i < size; i++) {
+            if (tests[i]) {
+                result[outIdx++] = items[i];
+            }
+        }
+        return result;
+    }
+
+    public static boolean startsWith(byte[] cur, byte[] val) {
+        if (cur == null || val == null) return false;
+        if (cur.length < val.length) return false;
+        for (int i = 0; i < val.length; i++) {
+            if (cur[i] != val[i]) return false;
+        }
+        return true;
+    }
+
+    /**
+     * Returns the first element from the array for which
+     * condition {@code predicate} is true, or null if there is no such element
+     */
+    public static @Nullable <T> T find(@Nullable T[] items,
+                                       @NonNull java.util.function.Predicate<T> predicate) {
+        if (isEmpty(items)) return null;
+        for (final T item : items) {
+            if (predicate.test(item)) return item;
+        }
+        return null;
+    }
+
+    public static String deepToString(Object value) {
+        if (value != null && value.getClass().isArray()) {
+            if (value.getClass() == boolean[].class) {
+                return Arrays.toString((boolean[]) value);
+            } else if (value.getClass() == byte[].class) {
+                return Arrays.toString((byte[]) value);
+            } else if (value.getClass() == char[].class) {
+                return Arrays.toString((char[]) value);
+            } else if (value.getClass() == double[].class) {
+                return Arrays.toString((double[]) value);
+            } else if (value.getClass() == float[].class) {
+                return Arrays.toString((float[]) value);
+            } else if (value.getClass() == int[].class) {
+                return Arrays.toString((int[]) value);
+            } else if (value.getClass() == long[].class) {
+                return Arrays.toString((long[]) value);
+            } else if (value.getClass() == short[].class) {
+                return Arrays.toString((short[]) value);
+            } else {
+                return Arrays.deepToString((Object[]) value);
+            }
+        } else {
+            return String.valueOf(value);
+        }
+    }
+
+    /**
+     * Returns the {@code i}-th item in {@code items}, if it exists and {@code items} is not {@code
+     * null}, otherwise returns {@code null}.
+     */
+    @Nullable
+    public static <T> T getOrNull(@Nullable T[] items, int i) {
+        return (items != null && items.length > i) ? items[i] : null;
+    }
+
+    public static @Nullable <T> T firstOrNull(T[] items) {
+        return items.length > 0 ? items[0] : null;
+    }
+
+    /**
+     * Creates a {@link List} from an array. Different from {@link Arrays#asList(Object[])} as that
+     * will use the parameter as the backing array, meaning changes are not isolated.
+     */
+    public static <T> List<T> toList(T[] array) {
+        List<T> list = new ArrayList<>(array.length);
+        //noinspection ManualArrayToCollectionCopy
+        for (T item : array) {
+            //noinspection UseBulkOperation
+            list.add(item);
+        }
+        return list;
     }
 }
