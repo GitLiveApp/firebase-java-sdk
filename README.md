@@ -109,7 +109,7 @@ Is the Firebase library or API you need missing? [Create an issue](https://githu
 
 Currently, the following limitations are observed:
 
-* Firebase Auth implementation is minimal and only supports a small subset of the API:
+#### Firebase Auth implementation is minimal and only supports a small subset of the API:
   - `signInAnonymously`
   - `signInWithCustomToken`
   - `signInWithEmailAndPassword`
@@ -121,14 +121,14 @@ Currently, the following limitations are observed:
   - `addAuthStateListener`
   - `removeAuthStateListener`
   - `signOut`
-* Cloud Firestore does not support [Offline Persistence](https://firebase.google.com/docs/firestore/manage-data/enable-offline#configure_offline_persistence) and should be setup as follows:
+#### Cloud Firestore does not support [Offline Persistence](https://firebase.google.com/docs/firestore/manage-data/enable-offline#configure_offline_persistence) and should be setup as follows:
 ```java
 FirebaseFirestoreSettings settings = new FirebaseFirestoreSettings.Builder(db.getFirestoreSettings())
     .setPersistenceEnabled(false)
     .build();
 db.setFirestoreSettings(settings);
 ```
-* Realtime Database does not support [Disk Persistence](https://firebase.google.com/docs/database/android/offline-capabilities), and should be setup as follows:
+#### Realtime Database does not support [Disk Persistence](https://firebase.google.com/docs/database/android/offline-capabilities), and should be setup as follows:
 ```java
 FirebaseDatabase.getInstance().setPersistenceEnabled(false)
 ```
