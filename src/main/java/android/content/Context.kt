@@ -58,7 +58,7 @@ open class Context {
             override fun getString(key: String, defaultValue: String?): String? {
                 return when {
                     key == "last-used-date" -> FirebasePlatform.firebasePlatform.retrieve(key) ?: defaultValue
-                    key.startsWith("|T|")  -> null
+                    key.contains("|T|")  -> null
                     key.startsWith("com.google.firebase.auth.FIREBASE_USER") ->
                         FirebasePlatform.firebasePlatform.retrieve(key) ?: defaultValue
                     else -> throw IllegalArgumentException(key)
