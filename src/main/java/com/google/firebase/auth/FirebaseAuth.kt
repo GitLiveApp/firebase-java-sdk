@@ -10,13 +10,13 @@ import com.google.firebase.FirebasePlatform
 import com.google.firebase.auth.internal.InternalAuthProvider
 import com.google.firebase.internal.InternalTokenResult
 import com.google.firebase.internal.api.FirebaseNoSignedInUserException
-import com.squareup.okhttp.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
 import kotlinx.serialization.json.*
+import okhttp3.*
 import java.io.IOException
 import java.util.*
 import java.util.concurrent.CopyOnWriteArrayList
@@ -71,12 +71,12 @@ class FirebaseUserImpl private constructor(
             .build()
         FirebaseAuth.getInstance(app).client.newCall(request).enqueue(object : Callback {
 
-            override fun onFailure(request: Request, e: IOException) {
+            override fun onFailure(call: Call, e: IOException) {
                 source.setException(FirebaseException(e.toString(), e))
             }
 
             @Throws(IOException::class)
-            override fun onResponse(response: Response) {
+            override fun onResponse(call: Call, response: Response) {
                 if (!response.isSuccessful) {
                     FirebaseAuth.getInstance(app).signOut()
                     source.setException(FirebaseAuthInvalidUserException(
@@ -104,7 +104,11 @@ class FirebaseUserImpl private constructor(
 class FirebaseAuth constructor(val app: FirebaseApp) : InternalAuthProvider {
 
     val json = MediaType.parse("application/json; charset=utf-8")
-    val client = OkHttpClient()
+    val client: OkHttpClient = OkHttpClient.Builder()
+        .connectTimeout(60, TimeUnit.SECONDS)
+        .readTimeout(60, TimeUnit.SECONDS)
+        .writeTimeout(60, TimeUnit.SECONDS)
+        .build()
 
     companion object {
 
@@ -159,12 +163,6 @@ class FirebaseAuth constructor(val app: FirebaseApp) : InternalAuthProvider {
             }
         }
 
-    init {
-        client.setConnectTimeout(60, TimeUnit.SECONDS)
-        client.setReadTimeout(60, TimeUnit.SECONDS)
-        client.setWriteTimeout(60, TimeUnit.SECONDS)
-    }
-
     fun signInAnonymously(): Task<AuthResult> {
         val source = TaskCompletionSource<AuthResult>()
         val body = RequestBody.create(json, JsonObject(mapOf("returnSecureToken" to JsonPrimitive(true))).toString())
@@ -174,19 +172,19 @@ class FirebaseAuth constructor(val app: FirebaseApp) : InternalAuthProvider {
             .build()
         client.newCall(request).enqueue(object : Callback {
 
-            override fun onFailure(request: Request, e: IOException) {
+            override fun onFailure(call: Call, e: IOException) {
                 source.setException(FirebaseException(e.toString(), e))
             }
 
             @Throws(IOException::class)
-            override fun onResponse(response: Response) {
+            override fun onResponse(call: Call, response: Response) {
                 if (!response.isSuccessful) {
                     source.setException(FirebaseAuthInvalidUserException(
                         response.message(),
                         formatErrorMessage("accounts:signUp", request, response)
                     ))
                 } else {
-                    val body = response.body().use { it.string() }
+                    val body = response.body()!!.use { it.string() }
                     user = FirebaseUserImpl(app, jsonParser.parseToJsonElement(body).jsonObject, true)
                     source.setResult(AuthResult { user })
                 }
@@ -207,19 +205,19 @@ class FirebaseAuth constructor(val app: FirebaseApp) : InternalAuthProvider {
             .build()
         client.newCall(request).enqueue(object : Callback {
 
-            override fun onFailure(request: Request, e: IOException) {
+            override fun onFailure(call: Call, e: IOException) {
                 source.setException(FirebaseException(e.toString(), e))
             }
 
             @Throws(IOException::class)
-            override fun onResponse(response: Response) {
+            override fun onResponse(call: Call, response: Response) {
                 if (!response.isSuccessful) {
                     source.setException(FirebaseAuthInvalidUserException(
                         response.message(),
                         formatErrorMessage("verifyCustomToken", request, response)
                     ))
                 } else {
-                    val body = response.body().use { it.string() }
+                    val body = response.body()!!.use { it.string() }
                     val user = FirebaseUserImpl(app, jsonParser.parseToJsonElement(body).jsonObject)
                     refreshToken(user, source) { AuthResult { it } }
                 }
@@ -240,19 +238,19 @@ class FirebaseAuth constructor(val app: FirebaseApp) : InternalAuthProvider {
             .build()
         client.newCall(request).enqueue(object : Callback {
 
-            override fun onFailure(request: Request, e: IOException) {
+            override fun onFailure(call: Call, e: IOException) {
                 source.setException(FirebaseException(e.toString(), e))
             }
 
             @Throws(IOException::class)
-            override fun onResponse(response: Response) {
+            override fun onResponse(call: Call, response: Response) {
                 if (!response.isSuccessful) {
                     source.setException(FirebaseAuthInvalidUserException(
                         response.message(),
                         formatErrorMessage("verifyPassword", request, response)
                     ))
                 } else {
-                    val body = response.body().use { it.string() }
+                    val body = response.body()!!.use { it.string() }
                     val user = FirebaseUserImpl(app, jsonParser.parseToJsonElement(body).jsonObject)
                     refreshToken(user, source) { AuthResult { it } }
                 }
@@ -263,8 +261,8 @@ class FirebaseAuth constructor(val app: FirebaseApp) : InternalAuthProvider {
 
     internal fun formatErrorMessage(title: String, request: Request, response: Response): String {
         return "$title API returned an error, " +
-            "with url [${request.method()}] ${request.urlString()} ${request.body()} -- " +
-            "response [${response.code()}] ${response.message()} ${response.body().use { it.string() }}"
+            "with url [${request.method()}] ${request.url()} ${request.body()} -- " +
+            "response [${response.code()}] ${response.message()} ${response.body().use { it?.string() }}"
     }
 
     fun signOut() {
@@ -313,17 +311,17 @@ class FirebaseAuth constructor(val app: FirebaseApp) : InternalAuthProvider {
 
         client.newCall(request).enqueue(object : Callback {
 
-            override fun onFailure(request: Request, e: IOException) {
+            override fun onFailure(call: Call, e: IOException) {
                 source.setException(FirebaseException(e.toString(), e))
             }
 
             @Throws(IOException::class)
-            override fun onResponse(response: Response) {
+            override fun onResponse(call: Call, response: Response) {
                 response.body().use { body ->
                     if (!response.isSuccessful) {
-                        body.string().let { signOutAndThrowInvalidUserException(it, "token API returned an error: $it") }
+                        signOutAndThrowInvalidUserException(body?.string().orEmpty(), "token API returned an error: ${body?.string()}")
                     } else {
-                        jsonParser.parseToJsonElement(body.string()).jsonObject.apply {
+                        jsonParser.parseToJsonElement(body!!.string()).jsonObject.apply {
                             val user = FirebaseUserImpl(app, this, user.isAnonymous)
                             if (user.claims["aud"] != app.options.projectId) {
                                 signOutAndThrowInvalidUserException(

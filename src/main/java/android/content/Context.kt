@@ -56,15 +56,13 @@ open class Context {
             }
 
             override fun getString(key: String, defaultValue: String?): String? {
-                when (key) {
-                    "|T|app.teamhub.core|*" -> return null
-                    "|T|dev.teamhub.core|*" -> return null
-                    "last-used-date" -> return FirebasePlatform.firebasePlatform.retrieve(key) ?: defaultValue
-                    else -> if(key.startsWith("com.google.firebase.auth.FIREBASE_USER")) {
-                        return FirebasePlatform.firebasePlatform.retrieve(key) ?: defaultValue
-                    }
+                return when {
+                    key == "last-used-date" -> FirebasePlatform.firebasePlatform.retrieve(key) ?: defaultValue
+                    key.contains("|T|")  -> null
+                    key.startsWith("com.google.firebase.auth.FIREBASE_USER") ->
+                        FirebasePlatform.firebasePlatform.retrieve(key) ?: defaultValue
+                    else -> throw IllegalArgumentException(key)
                 }
-                throw IllegalArgumentException(key)
             }
 
             override fun getLong(key: String?, defaultValue: Long): Long {
