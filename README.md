@@ -35,7 +35,7 @@ Or Maven:
 <dependency>
     <groupId>dev.gitlive</groupId>
     <artifactId>firebase-java-sdk</artifactId>
-    <version>0.3.1</version>
+    <version>0.4.0</version>
 </dependency>
 ```
 
@@ -121,13 +121,6 @@ Currently, the following limitations are observed:
   - `addAuthStateListener`
   - `removeAuthStateListener`
   - `signOut`
-#### Cloud Firestore does not support [Offline Persistence](https://firebase.google.com/docs/firestore/manage-data/enable-offline#configure_offline_persistence) and should be setup as follows:
-```java
-FirebaseFirestoreSettings settings = new FirebaseFirestoreSettings.Builder(db.getFirestoreSettings())
-    .setPersistenceEnabled(false)
-    .build();
-db.setFirestoreSettings(settings);
-```
 #### Realtime Database does not support [Disk Persistence](https://firebase.google.com/docs/database/android/offline-capabilities), and should be setup as follows:
 ```java
 FirebaseDatabase.getInstance().setPersistenceEnabled(false)
