@@ -16,8 +16,8 @@ plugins {
     `java-library`
     `maven-publish`
     signing
-    id("org.jetbrains.kotlin.jvm") version "1.7.10"
-    kotlin("plugin.serialization") version "1.7.10"
+    id("org.jetbrains.kotlin.jvm") version "1.9.22"
+    kotlin("plugin.serialization") version "1.9.22"
     id("org.jlleitschuh.gradle.ktlint") version "10.0.0"
     id("com.github.ben-manes.versions") version "0.42.0"
 }
@@ -148,8 +148,8 @@ publishing {
 dependencies {
     compileOnly("org.robolectric:android-all:12.1-robolectric-8229987")
     testImplementation("junit:junit:4.13.2")
-    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-swing:1.6.0")
-    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.6.0")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-swing:1.7.3")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.7.3")
     // firebase aars
     aar("com.google.firebase:firebase-firestore:24.10.0")
     aar("com.google.firebase:firebase-functions:20.4.0")
@@ -160,9 +160,9 @@ dependencies {
     api(fileTree(mapOf("dir" to "build/jar", "include" to listOf("*.jar"))))
     // polyfill dependencies
     implementation("org.jetbrains.kotlin:kotlin-stdlib")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4")
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-core:1.3.2")
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.3.2")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-core:1.6.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
     implementation("org.xerial:sqlite-jdbc:3.44.1.0")
     // firebase dependencies
     implementation("javax.inject:javax.inject:1")
