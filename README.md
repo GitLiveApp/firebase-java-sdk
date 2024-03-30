@@ -59,6 +59,18 @@ FirebasePlatform.initializeFirebasePlatform(object : FirebasePlatform() {
 })
 ```
 
+#### Customizing Firestore offline data persistence database location
+
+The `FirebasePlatform` interface also includes a `getDatabasePath` method for you to override if the following default implementation is not suitable:
+
+```kotlin
+    open fun getDatabasePath(name: String): File = File("${System.getProperty("java.io.tmpdir")}${File.separatorChar}$name")
+```
+
+This is used by Firestore  to support [offline data persistence](https://firebase.google.com/docs/firestore/manage-data/enable-offline).
+
+#### Initialize the Firebase application
+
 It is also up to you to initialize the Firebase application object manually (unlike the Android SDK which is normally initialized via 
 the configuration file). 
 
