@@ -27,7 +27,7 @@ version = project.property("version") as String
 
 java {
     withSourcesJar()
-//    withJavadocJar()
+    withJavadocJar()
     sourceCompatibility = JavaVersion.VERSION_11
 }
 
