@@ -67,7 +67,7 @@ The `FirebasePlatform` interface also includes a `getDatabasePath` method for yo
     open fun getDatabasePath(name: String): File = File("${System.getProperty("java.io.tmpdir")}${File.separatorChar}$name")
 ```
 
-This is used by Firestore  to support [offline data persistence](https://firebase.google.com/docs/firestore/manage-data/enable-offline).
+This is used by Firestore to support [offline data persistence](https://firebase.google.com/docs/firestore/manage-data/enable-offline).
 
 #### Initialize the Firebase application
 

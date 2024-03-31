@@ -73,7 +73,9 @@ tasks {
     withType<Sign>().configureEach {
         onlyIf { !project.gradle.startParameter.taskNames.any { "MavenLocal" in it } }
     }
-
+    javadoc {
+        exclude("android/**", "libcore/util/**")
+    }
 }
 
 val jar by tasks.getting(Jar::class) {
