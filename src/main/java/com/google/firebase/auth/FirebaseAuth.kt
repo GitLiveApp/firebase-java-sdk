@@ -79,10 +79,13 @@ class FirebaseUserImpl private constructor(
             override fun onResponse(call: Call, response: Response) {
                 if (!response.isSuccessful) {
                     FirebaseAuth.getInstance(app).signOut()
-                    source.setException(FirebaseAuthInvalidUserException(
-                        response.message(),
-                        FirebaseAuth.getInstance(app).formatErrorMessage("deleteAccount", request, response)
-                    ))
+                    source.setException(
+                        FirebaseAuth.getInstance(app).createAuthInvalidUserException(
+                            "deleteAccount",
+                            request,
+                            response,
+                        )
+                    )
                 } else {
                     source.setResult(null)
                 }
@@ -179,10 +182,9 @@ class FirebaseAuth constructor(val app: FirebaseApp) : InternalAuthProvider {
             @Throws(IOException::class)
             override fun onResponse(call: Call, response: Response) {
                 if (!response.isSuccessful) {
-                    source.setException(FirebaseAuthInvalidUserException(
-                        response.message(),
-                        formatErrorMessage("accounts:signUp", request, response)
-                    ))
+                    source.setException(
+                        createAuthInvalidUserException("accounts:signUp", request, response)
+                    )
                 } else {
                     val body = response.body()!!.use { it.string() }
                     user = FirebaseUserImpl(app, jsonParser.parseToJsonElement(body).jsonObject, true)
@@ -212,10 +214,9 @@ class FirebaseAuth constructor(val app: FirebaseApp) : InternalAuthProvider {
             @Throws(IOException::class)
             override fun onResponse(call: Call, response: Response) {
                 if (!response.isSuccessful) {
-                    source.setException(FirebaseAuthInvalidUserException(
-                        response.message(),
-                        formatErrorMessage("verifyCustomToken", request, response)
-                    ))
+                    source.setException(
+                        createAuthInvalidUserException("verifyCustomToken", request, response)
+                    )
                 } else {
                     val body = response.body()!!.use { it.string() }
                     val user = FirebaseUserImpl(app, jsonParser.parseToJsonElement(body).jsonObject)
@@ -245,10 +246,9 @@ class FirebaseAuth constructor(val app: FirebaseApp) : InternalAuthProvider {
             @Throws(IOException::class)
             override fun onResponse(call: Call, response: Response) {
                 if (!response.isSuccessful) {
-                    source.setException(FirebaseAuthInvalidUserException(
-                        response.message(),
-                        formatErrorMessage("verifyPassword", request, response)
-                    ))
+                    source.setException(
+                        createAuthInvalidUserException("verifyPassword", request, response)
+                    )
                 } else {
                     val body = response.body()!!.use { it.string() }
                     val user = FirebaseUserImpl(app, jsonParser.parseToJsonElement(body).jsonObject)
@@ -259,10 +259,23 @@ class FirebaseAuth constructor(val app: FirebaseApp) : InternalAuthProvider {
         return source.task
     }
 
-    internal fun formatErrorMessage(title: String, request: Request, response: Response): String {
-        return "$title API returned an error, " +
-            "with url [${request.method()}] ${request.url()} ${request.body()} -- " +
-            "response [${response.code()}] ${response.message()} ${response.body().use { it?.string() }}"
+    internal fun createAuthInvalidUserException(
+        action: String,
+        request: Request,
+        response: Response,
+    ): FirebaseAuthInvalidUserException {
+        val body = response.body()!!.use { it.string() }
+        val jsonObject = jsonParser.parseToJsonElement(body).jsonObject
+
+        return FirebaseAuthInvalidUserException(
+            jsonObject["error"]?.jsonObject
+                ?.get("message")?.jsonPrimitive
+                ?.contentOrNull
+                ?: "UNKNOWN_ERROR",
+            "$action API returned an error, " +
+                "with url [${request.method()}] ${request.url()} ${request.body()} -- " +
+                "response [${response.code()}] ${response.message()} $body"
+        )
     }
 
     fun signOut() {
