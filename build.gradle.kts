@@ -28,7 +28,7 @@ version = project.property("version") as String
 java {
     withSourcesJar()
     withJavadocJar()
-    sourceCompatibility = JavaVersion.VERSION_11
+    sourceCompatibility = JavaVersion.VERSION_17
 }
 
 val aar by configurations.creating
@@ -62,12 +62,12 @@ tasks {
     compileKotlin {
         dependsOn(extractClasses)
         kotlinOptions {
-            jvmTarget = JavaVersion.VERSION_11.toString()
+            jvmTarget = JavaVersion.VERSION_17.toString()
         }
     }
     compileTestKotlin {
         kotlinOptions {
-            jvmTarget = JavaVersion.VERSION_11.toString()
+            jvmTarget = JavaVersion.VERSION_17.toString()
         }
     }
     withType<Sign>().configureEach {
