@@ -142,9 +142,7 @@ FirebaseDatabase.getInstance().setPersistenceEnabled(false)
 
 This library is built with Gradle. 
 
-Run `./gradlew build` to build, the first time you run build it will fail as it requires the output of the custom `copyAars` and `extractClasses` 
-gradle tasks to be present in the build folder before the project will successfully compile. These tasks extract the jar files from the 
-Firebase Android library AAR files to the `build/jar` folder and run on `./gradlew build`.
+Run `./gradlew build` to build the library locally. 
 
 ### Implementation details
 
