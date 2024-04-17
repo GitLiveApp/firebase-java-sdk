@@ -51,6 +51,7 @@ val extractClasses by tasks.creating {
             tasks.create(aarFile.name, Copy::class) {
                 from(zipTree(aarFile))
                 include("classes.jar")
+                fileMode = 0b01110110000
                 rename("classes.jar", aarFile.nameWithoutExtension + ".jar")
                 into("build/jar")
             }
