@@ -58,7 +58,7 @@ open class Context {
             override fun getString(key: String, defaultValue: String?): String? {
                 return when {
                     key == "last-used-date" -> FirebasePlatform.firebasePlatform.retrieve(key) ?: defaultValue
-                    key.contains("|T|")  -> null
+                    key.contains("|T|") -> null
                     key.startsWith("com.google.firebase.auth.FIREBASE_USER") ->
                         FirebasePlatform.firebasePlatform.retrieve(key) ?: defaultValue
                     else -> throw IllegalArgumentException(key)
@@ -89,7 +89,7 @@ open class Context {
                     override fun putString(key: String?, value: String?): Editor {
                         when (key) {
                             "last-used-date" -> FirebasePlatform.firebasePlatform.store(key, value.toString())
-                            else -> if(key?.startsWith("com.google.firebase.auth.FIREBASE_USER") == true) {
+                            else -> if (key?.startsWith("com.google.firebase.auth.FIREBASE_USER") == true) {
                                 FirebasePlatform.firebasePlatform.store(key, value.toString())
                             } else {
                                 throw IllegalArgumentException(key)
