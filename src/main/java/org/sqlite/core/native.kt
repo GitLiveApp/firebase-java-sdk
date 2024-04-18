@@ -8,16 +8,16 @@ import org.sqlite.Function
 import org.sqlite.SQLiteConfig
 import org.sqlite.SQLiteOpenMode
 import java.text.Collator
-import java.util.*
+import java.util.Locale
 
 fun Open(path: String, openFlags: Int, label: String, enableTrace: Boolean, enableProfile: Boolean): NativeDB {
     NativeDB.load()
     val db = NativeDB(null, path, SQLiteConfig())
-    val flags = (0 .. 31).asSequence()
+    val flags = (0..31).asSequence()
         .map { 1 shl it }
         .filter { it and openFlags > 0 }
         .map {
-            when(it) {
+            when (it) {
                 SQLiteDatabase.CREATE_IF_NECESSARY -> SQLiteOpenMode.READWRITE.flag or SQLiteOpenMode.CREATE.flag
                 SQLiteDatabase.OPEN_READONLY -> {
                     db.config.isExplicitReadOnly = true
@@ -44,16 +44,18 @@ fun RegisterCustomFunction(
             args.indices.forEach { args[it] = value_text(it) }
 //            function.callback.callback(args)
         }
-
     }
     connectionPtr.create_function(function.name, callback, function.numArgs, 0)
 }
 
 fun RegisterLocalizedCollators(connectionPtr: NativeDB, locale: String) {
     val collator = Collator.getInstance(Locale.forLanguageTag(locale))
-    connectionPtr.create_collation(locale, object : Collation() {
-        override fun xCompare(str1: String?, str2: String?) = collator.compare(str1, str2)
-    })
+    connectionPtr.create_collation(
+        locale,
+        object : Collation() {
+            override fun xCompare(str1: String?, str2: String?) = collator.compare(str1, str2)
+        }
+    )
 }
 
 fun PrepareStatement(connectionPtr: NativeDB, sql: String) =
@@ -124,49 +126,49 @@ fun ExecuteForLastInsertedRowId(connectionPtr: NativeDB, statementPtr: Long): Lo
 fun ExecuteForCursorWindow(connectionPtr: NativeDB, statementPtr: Long, win: CursorWindow, startPos: Int, iRowRequired: Int, countAllRows: Boolean): Long {
 
     /* Set the number of columns in the window */
-    if(!win.setNumColumns(connectionPtr.column_count(statementPtr))) return 0
+    if (!win.setNumColumns(connectionPtr.column_count(statementPtr))) return 0
 
-    var nRow = 0;
-    var iStart = startPos;
-    var bOk = true;
+    var nRow = 0
+    var iStart = startPos
+    var bOk = true
 
-    while(connectionPtr.step(statementPtr) == Codes.SQLITE_ROW) {
+    while (connectionPtr.step(statementPtr) == Codes.SQLITE_ROW) {
         /* Only copy in rows that occur at or after row index iStart. */
-        if((nRow >= iStart) && bOk){
-            bOk = copyRowToWindow(connectionPtr, win, (nRow - iStart), statementPtr);
-            if(!bOk){
+        if ((nRow >= iStart) && bOk) {
+            bOk = copyRowToWindow(connectionPtr, win, (nRow - iStart), statementPtr)
+            if (!bOk) {
                 /* The CursorWindow object ran out of memory. If row iRowRequired was
                 ** not successfully added before this happened, clear the CursorWindow
                 ** and try to add the current row again.  */
-                if( nRow<=iRowRequired ){
-                    bOk = win.setNumColumns(connectionPtr.column_count(statementPtr));
-                    if(!bOk){
-                        connectionPtr.reset(statementPtr);
-                        return 0;
+                if (nRow <= iRowRequired) {
+                    bOk = win.setNumColumns(connectionPtr.column_count(statementPtr))
+                    if (!bOk) {
+                        connectionPtr.reset(statementPtr)
+                        return 0
                     }
-                    iStart = nRow;
-                    bOk = copyRowToWindow(connectionPtr, win, (nRow - iStart), statementPtr);
+                    iStart = nRow
+                    bOk = copyRowToWindow(connectionPtr, win, (nRow - iStart), statementPtr)
                 }
 
                 /* If the CursorWindow is still full and the countAllRows flag is not
                 ** set, break out of the loop here. If countAllRows is set, continue
                 ** so as to set variable nRow correctly.  */
-                if( !bOk && !countAllRows ) break;
+                if (!bOk && !countAllRows) break
             }
         }
 
-        nRow++;
+        nRow++
     }
 
     /* Finalize the statement. If this indicates an error occurred, throw an
     ** SQLiteException exception.  */
-    val rc = connectionPtr.reset(statementPtr);
-    if( rc!= Codes.SQLITE_OK ){
+    val rc = connectionPtr.reset(statementPtr)
+    if (rc != Codes.SQLITE_OK) {
         NativeDB.throwex(rc, connectionPtr.errmsg())
-        return 0;
+        return 0
     }
 
-    return iStart.toLong() shl 32 or nRow.toLong();
+    return iStart.toLong() shl 32 or nRow.toLong()
 }
 
 /*
@@ -176,13 +178,13 @@ fun ExecuteForCursorWindow(connectionPtr: NativeDB, statementPtr: Long, win: Cur
 ** occurs.
 */
 fun copyRowToWindow(connectionPtr: NativeDB, win: CursorWindow, iRow: Int, statementPtr: Long): Boolean {
-    val nCol = connectionPtr.column_count(statementPtr);
+    val nCol = connectionPtr.column_count(statementPtr)
     val i = 0
     var bOk = false
 
     bOk = win.allocRow()
-    for(i in 0 until nCol){
-        when(val type = connectionPtr.column_type(statementPtr, i)) {
+    for (i in 0 until nCol) {
+        when (val type = connectionPtr.column_type(statementPtr, i)) {
             Codes.SQLITE_NULL -> win.putNull(iRow, i)
             Codes.SQLITE_INTEGER -> win.putLong(connectionPtr.column_long(statementPtr, i), iRow, i)
             Codes.SQLITE_FLOAT -> win.putDouble(connectionPtr.column_double(statementPtr, i), iRow, i)
@@ -191,8 +193,8 @@ fun copyRowToWindow(connectionPtr: NativeDB, win: CursorWindow, iRow: Int, state
             else -> TODO("Unknown column type: $type")
         }
 
-        if(!bOk) win.freeLastRow()
+        if (!bOk) win.freeLastRow()
     }
 
-    return bOk;
+    return bOk
 }

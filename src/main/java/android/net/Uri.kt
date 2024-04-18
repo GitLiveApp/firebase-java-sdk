@@ -1,7 +1,7 @@
 package android.net
 
 import java.net.URI
-import java.util.*
+import java.util.Collections
 
 class Uri(private val uri: URI) {
 
@@ -47,8 +47,8 @@ class Uri(private val uri: URI) {
             if (separator > end || separator == -1) {
                 separator = end
             }
-            if (separator - start == key.length
-                && query.regionMatches(start, key, 0, key.length)
+            if (separator - start == key.length &&
+                query.regionMatches(start, key, 0, key.length)
             ) {
                 if (separator == end) {
                     return ""
@@ -64,4 +64,5 @@ class Uri(private val uri: URI) {
             }
         } while (true)
         return null
-    }}
+    }
+}
