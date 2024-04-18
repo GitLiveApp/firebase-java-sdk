@@ -5,7 +5,6 @@ import com.google.firebase.FirebasePlatform
 import com.google.firebase.initialize
 import org.junit.Test
 
-
 class AppTest {
     @Test
     fun testInitialize() {
@@ -24,6 +23,5 @@ class AppTest {
             // setStorageBucket(...)
             .build()
         val app = Firebase.initialize(Application(), options)
-
     }
 }

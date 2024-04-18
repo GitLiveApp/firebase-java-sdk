@@ -15,10 +15,29 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
-import kotlinx.serialization.json.*
-import okhttp3.*
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.booleanOrNull
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.doubleOrNull
+import kotlinx.serialization.json.int
+import kotlinx.serialization.json.intOrNull
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.longOrNull
+import okhttp3.Call
+import okhttp3.Callback
+import okhttp3.MediaType
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody
+import okhttp3.Response
 import java.io.IOException
-import java.util.*
+import java.util.Base64
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.TimeUnit
 
@@ -54,7 +73,7 @@ class FirebaseUserImpl private constructor(
             .orEmpty()
     }
 
-    val JsonElement.value get(): Any? = when(this) {
+    val JsonElement.value get(): Any? = when (this) {
         is JsonNull -> null
         is JsonArray -> map { it.value }
         is JsonObject -> jsonObject.mapValues { (_, it) -> it.value }
@@ -101,7 +120,6 @@ class FirebaseUserImpl private constructor(
     }
 
     override fun getIdToken(forceRefresh: Boolean) = FirebaseAuth.getInstance(app).getAccessToken(forceRefresh)
-
 }
 
 class FirebaseAuth constructor(val app: FirebaseApp) : InternalAuthProvider {
@@ -129,7 +147,7 @@ class FirebaseAuth constructor(val app: FirebaseApp) : InternalAuthProvider {
     val currentUser: FirebaseUser?
         get() = user
 
-    val FirebaseApp.key get() = "com.google.firebase.auth.FIREBASE_USER${"[${name}]".takeUnless { isDefaultApp }.orEmpty()}"
+    val FirebaseApp.key get() = "com.google.firebase.auth.FIREBASE_USER${"[$name]".takeUnless { isDefaultApp }.orEmpty()}"
 
     private var user: FirebaseUserImpl? = FirebasePlatform.firebasePlatform
         .runCatching { retrieve(app.key)?.let { FirebaseUserImpl(app, jsonParser.parseToJsonElement(it).jsonObject) } }
@@ -158,7 +176,7 @@ class FirebaseAuth constructor(val app: FirebaseApp) : InternalAuthProvider {
                             Log.i("FirebaseAuth", "Calling onIdTokenChanged for ${value?.uid} on listener $listener")
                             listener.onIdTokenChanged(result)
                         }
-                        for(listener in idTokenListeners) {
+                        for (listener in idTokenListeners) {
                             listener.onIdTokenChanged(this@FirebaseAuth)
                         }
                     }
@@ -279,14 +297,14 @@ class FirebaseAuth constructor(val app: FirebaseApp) : InternalAuthProvider {
     }
 
     fun signOut() {
-        //todo cancel token refresher
+        // todo cancel token refresher
         user = null
     }
 
     override fun getAccessToken(forceRefresh: Boolean): Task<GetTokenResult> {
         val user = user ?: return Tasks.forException(FirebaseNoSignedInUserException("Please sign in before trying to get a token."))
 
-        if (!forceRefresh && user.createdAt + user.expiresIn*1000 - 5*60*1000 > System.currentTimeMillis() ) {
+        if (!forceRefresh && user.createdAt + user.expiresIn * 1000 - 5 * 60 * 1000 > System.currentTimeMillis()) {
 //            Log.i("FirebaseAuth", "returning existing token for user ${user.uid} from getAccessToken")
             return Tasks.forResult(GetTokenResult(user.idToken, user.claims))
         }
