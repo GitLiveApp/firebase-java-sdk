@@ -41,20 +41,16 @@ val copyAars by tasks.registering(Copy::class) {
     into("build/aar")
 }
 
-val extractClasses by tasks.creating {
+val extractClasses by tasks.registering(Copy::class) {
     dependsOn(copyAars)
-    val aarFileTree = fileTree("build/aar")
-
-    aarFileTree.forEach { aarFile: File ->
-
-        dependsOn(
-            tasks.create(aarFile.name, Copy::class) {
-                from(zipTree(aarFile))
-                include("classes.jar")
-                rename("classes.jar", aarFile.nameWithoutExtension + ".jar")
-                into("build/jar")
-            }
-        )
+    configurations["aar"].forEach { aarFile ->
+        copy {
+            from(zipTree(aarFile))
+            include("classes.jar")
+            fileMode = 0b01110110000
+            rename("classes.jar", aarFile.nameWithoutExtension + ".jar")
+            into("build/jar")
+        }
     }
 }
 
