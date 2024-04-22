@@ -11,7 +11,7 @@ import org.junit.Before
 import org.junit.Test
 import java.io.File
 
-class FirestoreTest {
+class FirestoreTest : FirebaseTest() {
     @Before
     fun initialize() {
         FirebasePlatform.initializeFirebasePlatform(object : FirebasePlatform() {
