@@ -5,7 +5,7 @@ import com.google.firebase.FirebasePlatform
 import com.google.firebase.initialize
 import org.junit.Test
 
-class AppTest {
+class AppTest : FirebaseTest() {
     @Test
     fun testInitialize() {
         FirebasePlatform.initializeFirebasePlatform(object : FirebasePlatform() {
