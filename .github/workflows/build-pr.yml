@@ -5,11 +5,6 @@ jobs:
   gradle:
     name: Build and Test
     runs-on: ubuntu-latest
-    permissions:
-      checks: write
-      contents: read
-      issues: write
-      pull-requests: write
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-java@v3
@@ -20,9 +15,3 @@ jobs:
         uses: eskatos/gradle-command-action@v1
         with:
           arguments: build
-      - name: Test Report
-        uses: scacap/action-surefire-report@v1
-        if: always()
-        with:
-          report_paths: "build/test-results/test/TEST-*.xml"
-          github_token: ${{ secrets.GITHUB_TOKEN }}
