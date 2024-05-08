@@ -35,7 +35,7 @@ Or Maven:
 <dependency>
     <groupId>dev.gitlive</groupId>
     <artifactId>firebase-java-sdk</artifactId>
-    <version>0.4.0</version>
+    <version>0.4.2</version>
 </dependency>
 ```
 
