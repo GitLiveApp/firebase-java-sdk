@@ -155,7 +155,7 @@ dependencies {
     aar("com.google.firebase:firebase-config:21.6.0")
     aar("com.google.firebase:firebase-installations:17.2.0")
     // extracted aar dependencies
-    api(fileTree(mapOf("dir" to "build/jar", "include" to listOf("*.jar"))))
+    api(fileTree(mapOf("dir" to "build/jar", "include" to listOf("*.jar"), "exclude" to listOf("lifecycle-*"))))
     // polyfill dependencies
     implementation("org.jetbrains.kotlin:kotlin-stdlib")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
@@ -165,12 +165,12 @@ dependencies {
     // firebase dependencies
     implementation("javax.inject:javax.inject:1")
     implementation("com.squareup.okhttp3:okhttp:3.12.13")
-    implementation("android.arch.lifecycle:common:1.1.1")
     implementation("io.grpc:grpc-protobuf-lite:1.52.1")
     implementation("io.grpc:grpc-stub:1.52.1")
     implementation("androidx.collection:collection:1.2.0")
-    implementation("androidx.lifecycle:lifecycle-common:2.4.0")
     implementation("io.grpc:grpc-okhttp:1.52.1")
+    implementation("androidx.lifecycle:lifecycle-common:2.8.0-rc01")
+    implementation("androidx.lifecycle:lifecycle-viewmodel:2.8.0-rc01")
 }
 
 tasks.named("publishToMavenLocal").configure {
