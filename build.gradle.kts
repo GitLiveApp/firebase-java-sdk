@@ -155,6 +155,7 @@ dependencies {
     aar("com.google.firebase:firebase-config:21.6.0")
     aar("com.google.firebase:firebase-installations:17.2.0")
     // extracted aar dependencies
+    // exclude lifecycle libs due to https://github.com/GitLiveApp/firebase-java-sdk/pull/15 - remove the exclude  once the dependencies in the aars are updated to the required version
     api(fileTree(mapOf("dir" to "build/jar", "include" to listOf("*.jar"), "exclude" to listOf("lifecycle-*"))))
     // polyfill dependencies
     implementation("org.jetbrains.kotlin:kotlin-stdlib")
