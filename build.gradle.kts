@@ -81,6 +81,7 @@ val jar by tasks.getting(Jar::class) {
             it.path.startsWith("${projectDir.path}${File.separator}build${File.separator}jar")
         }.map { zipTree(it) }
     })
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }
 
 val sourceSets = project.the<SourceSetContainer>()
@@ -143,20 +144,82 @@ publishing {
     }
 }
 
+/**
+ * List of aar files to include in the jar. Some jars are being omitted because they are not needed for the JVM.
+ * - lifecycle-*: exclude lifecycle libs due to https://github.com/GitLiveApp/firebase-java-sdk/pull/15 - remove the exclude  once the dependencies in the aars are updated to the required version
+ * - savedstate: Excluded due to this library already being included as part of the compose mutliplatform dependencies. It does not seem to be directly needed by the firebase libraries.
+ */
+val includeList = listOf(
+    "activity-*.jar",
+    "asynclayoutinflater-*.jar",
+    "coordinatorlayout-*.jar",
+    "core-*.jar",
+    "core-runtime-*.jar",
+    "cursoradapter-*.jar",
+    "customview-*.jar",
+    "documentfile-*.jar",
+    "drawerlayout-*.jar",
+    "firebase-abt-*.jar",
+    "firebase-appcheck-*.jar",
+    "firebase-appcheck-interop-*.jar",
+    "firebase-auth-interop-*.jar",
+    "firebase-common-*.jar",
+    "firebase-common-*.jar",
+    "firebase-common-ktx-*.jar",
+    "firebase-common-ktx-*.jar",
+    "firebase-components-*.jar",
+    "firebase-components-*.jar",
+    "firebase-config-*.jar",
+    "firebase-config-interop-*.jar",
+    "firebase-database-*.jar",
+    "firebase-database-collection-*.jar",
+    "firebase-encoders-json-*.jar",
+    "firebase-firestore-*.jar",
+    "firebase-functions-*.jar",
+    "firebase-iid-*.jar",
+    "firebase-iid-interop-*.jar",
+    "firebase-installations-*.jar",
+    "firebase-installations-interop-*.jar",
+    "firebase-measurement-connector-*.jar",
+    "firebase-storage-*.jar",
+    "fragment-*.jar",
+    "fragment-*.jar",
+    "grpc-android-*.jar",
+    "interpolator-*.jar",
+    "legacy-support-core-ui-*.jar",
+    "legacy-support-core-utils-*.jar",
+    "loader-*.jar",
+    "localbroadcastmanager-*.jar",
+    "play-services-base-*.jar",
+    "play-services-basement-*.jar",
+    "play-services-basement-*.jar",
+    "play-services-cloud-messaging-*.jar",
+    "play-services-stats-*.jar",
+    "play-services-tasks-*.jar",
+    "play-services-tasks-*.jar",
+    "print-*.jar",
+    "protolite-well-known-types-*.jar",
+    "slidingpanelayout-*.jar",
+    "swiperefreshlayout-*.jar",
+    "versionedparcelable-*.jar",
+    "viewpager-*.jar",
+)
+
 dependencies {
     compileOnly("org.robolectric:android-all:12.1-robolectric-8229987")
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-swing:1.7.3")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.7.3")
+    testImplementation("org.mockito:mockito-core:5.12.0")
     // firebase aars
     aar("com.google.firebase:firebase-firestore:24.10.0")
     aar("com.google.firebase:firebase-functions:20.4.0")
     aar("com.google.firebase:firebase-database:20.3.0")
     aar("com.google.firebase:firebase-config:21.6.0")
     aar("com.google.firebase:firebase-installations:17.2.0")
+    aar("com.google.firebase:firebase-storage:21.0.0")
     // extracted aar dependencies
-    // exclude lifecycle libs due to https://github.com/GitLiveApp/firebase-java-sdk/pull/15 - remove the exclude  once the dependencies in the aars are updated to the required version
-    api(fileTree(mapOf("dir" to "build/jar", "include" to listOf("*.jar"), "exclude" to listOf("lifecycle-*"))))
+    api(fileTree(mapOf("dir" to "build/jar", "include" to includeList)))
     // polyfill dependencies
     implementation("org.jetbrains.kotlin:kotlin-stdlib")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
