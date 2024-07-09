@@ -348,21 +348,20 @@ class FirebaseAuth constructor(val app: FirebaseApp) : InternalAuthProvider {
 
             @Throws(IOException::class)
             override fun onResponse(call: Call, response: Response) {
-                response.body().use { body ->
-                    if (!response.isSuccessful) {
-                        signOutAndThrowInvalidUserException(body?.string().orEmpty(), "token API returned an error: ${body?.string()}")
-                    } else {
-                        jsonParser.parseToJsonElement(body!!.string()).jsonObject.apply {
-                            val user = FirebaseUserImpl(app, this, user.isAnonymous)
-                            if (user.claims["aud"] != app.options.projectId) {
-                                signOutAndThrowInvalidUserException(
-                                    user.claims.toString(),
-                                    "Project ID's do not match ${user.claims["aud"]} != ${app.options.projectId}"
-                                )
-                            } else {
-                                this@FirebaseAuth.user = user
-                                source.setResult(user)
-                            }
+                val body = response.body()?.use { it.string() }
+                if (!response.isSuccessful) {
+                    signOutAndThrowInvalidUserException(body.orEmpty(), "token API returned an error: $body")
+                } else {
+                    jsonParser.parseToJsonElement(body!!).jsonObject.apply {
+                        val user = FirebaseUserImpl(app, this, user.isAnonymous)
+                        if (user.claims["aud"] != app.options.projectId) {
+                            signOutAndThrowInvalidUserException(
+                                user.claims.toString(),
+                                "Project ID's do not match ${user.claims["aud"]} != ${app.options.projectId}"
+                            )
+                        } else {
+                            this@FirebaseAuth.user = user
+                            source.setResult(user)
                         }
                     }
                 }
