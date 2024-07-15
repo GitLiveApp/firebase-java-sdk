@@ -104,16 +104,17 @@ val app = Firebase.initialize(new Application(), options)
 
 The following libraries are available for the various Firebase products.
 
-| Service or Product	                                                          | Port of Android version | 
-|---------------------------------------------------------------------------------|:------------------------|
-| [Authentication](https://firebase.google.com/docs/auth)                         |  N/A[^1]                |
-| [Cloud Firestore](https://firebase.google.com/docs/firestore)                   | `24.10.0`               |
-| [Realtime Database](https://firebase.google.com/docs/database)                  | `20.3.0`                |
-| [Cloud Functions](https://firebase.google.com/docs/functions)                   | `20.4.0`                |
-| [Remote Config](https://firebase.google.com/docs/remote-config)                 | `21.6.0`                |
-| [Installations](https://firebase.google.com/docs/projects/manage-installations) | `17.2.0`                |
+| Service or Product	                                                              | Port of Android version | 
+|-----------------------------------------------------------------------------------|:------------------------|
+| [Authentication](https://firebase.google.com/docs/auth)                           |  N/A[^1]                |
+| [Cloud Firestore](https://firebase.google.com/docs/firestore)                     | `24.10.0`               |
+| [Realtime Database](https://firebase.google.com/docs/database)                    | `20.3.0`                |
+| [Cloud Functions](https://firebase.google.com/docs/functions)                     | `20.4.0`                |
+| ~[Remote Config](https://firebase.google.com/docs/remote-config)~                 | `21.6.0`[^2]            |
+| ~[Installations](https://firebase.google.com/docs/projects/manage-installations)~ | `17.2.0`[^2]            |
 
 [^1]: Google has not open-sourced the Firebase Auth implementation for Android so a basic implementation using the Rest API is provided.
+[^2]: Although the libraries are inlcuded they are currently not funtional 
 
 Is the Firebase library or API you need missing? [Create an issue](https://github.com/GitLiveApp/firebase-java-sdk/issues/new?labels=API+coverage&template=increase-api-coverage.md&title=Add+%5Bclass+name%5D.%5Bfunction+name%5D+to+%5Blibrary+name) to request additional API coverage or be awesome and [submit a PR](https://github.com/GitLiveApp/firebase-java-sdk/fork).
 
