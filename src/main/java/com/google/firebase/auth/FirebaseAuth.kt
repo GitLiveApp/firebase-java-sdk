@@ -343,7 +343,7 @@ class FirebaseAuth constructor(val app: FirebaseApp) : InternalAuthProvider {
         client.newCall(request).enqueue(object : Callback {
 
             override fun onFailure(call: Call, e: IOException) {
-                source.setException(FirebaseException(e.toString(), e))
+                source.setException(e)
             }
 
             @Throws(IOException::class)
