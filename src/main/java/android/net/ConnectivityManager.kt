@@ -21,6 +21,10 @@ class ConnectivityManager private constructor() {
         connected.removeEventListener(networkCallback)
     }
 
+    fun getActiveNetworkInfo(): NetworkInfo {
+        return NetworkInfo()
+    }
+
     open class NetworkCallback : ValueEventListener {
         override fun onDataChange(data: DataSnapshot) {
             when (data.getValue(Boolean::class.java)) {
