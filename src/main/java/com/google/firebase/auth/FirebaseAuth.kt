@@ -52,7 +52,7 @@ class FirebaseUserImpl private constructor(
     val idToken: String,
     val refreshToken: String,
     val expiresIn: Int,
-    val createdAt: Long,
+    val createdAt: Long
 ) : FirebaseUser() {
 
     constructor(app: FirebaseApp, data: JsonObject, isAnonymous: Boolean = data["isAnonymous"]?.jsonPrimitive?.booleanOrNull ?: false) : this(
@@ -102,7 +102,7 @@ class FirebaseUserImpl private constructor(
                         FirebaseAuth.getInstance(app).createAuthInvalidUserException(
                             "deleteAccount",
                             request,
-                            response,
+                            response
                         )
                     )
                 } else {
@@ -159,9 +159,9 @@ class FirebaseAuth constructor(val app: FirebaseApp) : InternalAuthProvider {
                 val prev = field
                 field = value
 
-                if (value == null)
+                if (value == null) {
                     FirebasePlatform.firebasePlatform.clear(app.key)
-                else {
+                } else {
                     FirebasePlatform.firebasePlatform.store(app.key, jsonParser.encodeToString(FirebaseUserImpl.serializer(), value))
                 }
 
@@ -280,7 +280,7 @@ class FirebaseAuth constructor(val app: FirebaseApp) : InternalAuthProvider {
     internal fun createAuthInvalidUserException(
         action: String,
         request: Request,
-        response: Response,
+        response: Response
     ): FirebaseAuthInvalidUserException {
         val body = response.body()!!.use { it.string() }
         val jsonObject = jsonParser.parseToJsonElement(body).jsonObject
