@@ -124,7 +124,6 @@ fun ExecuteForLastInsertedRowId(connectionPtr: NativeDB, statementPtr: Long): Lo
 }
 
 fun ExecuteForCursorWindow(connectionPtr: NativeDB, statementPtr: Long, win: CursorWindow, startPos: Int, iRowRequired: Int, countAllRows: Boolean): Long {
-
     /* Set the number of columns in the window */
     if (!win.setNumColumns(connectionPtr.column_count(statementPtr))) return 0
 

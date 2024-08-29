@@ -12,6 +12,7 @@ class SSLCertificateSocketFactory() : SSLSocketFactory() {
         init {
             HttpsURLConnection.setDefaultHostnameVerifier { _, _ -> true }
         }
+
         @JvmStatic
         fun getDefault(timeout: Int, cache: SSLSessionCache): SSLSocketFactory = SSLCertificateSocketFactory()
     }

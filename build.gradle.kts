@@ -16,10 +16,10 @@ plugins {
     `java-library`
     `maven-publish`
     signing
-    id("org.jetbrains.kotlin.jvm") version "1.9.22"
-    kotlin("plugin.serialization") version "1.9.22"
-    id("org.jlleitschuh.gradle.ktlint") version "10.0.0"
-    id("com.github.ben-manes.versions") version "0.42.0"
+    alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.kotlinx.serialization)
+    alias(libs.plugins.jlleitschuh.ktlint)
+    alias(libs.plugins.ben.manes.versions)
 }
 
 group = "dev.gitlive"
@@ -144,34 +144,33 @@ publishing {
 }
 
 dependencies {
-    compileOnly("org.robolectric:android-all:12.1-robolectric-8229987")
-    testImplementation("junit:junit:4.13.2")
-    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-swing:1.7.3")
-    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.7.3")
+    compileOnly(libs.robolectric.android.all)
+    testImplementation(libs.junit)
+    testImplementation(libs.kotlinx.coroutines.swing)
+    testImplementation(libs.kotlinx.coroutines.play.services)
     // firebase aars
-    aar("com.google.firebase:firebase-firestore:24.10.0")
-    aar("com.google.firebase:firebase-functions:20.4.0")
-    aar("com.google.firebase:firebase-database:20.3.0")
-    aar("com.google.firebase:firebase-config:21.6.0")
-    aar("com.google.firebase:firebase-installations:17.2.0")
+    aar(libs.google.firebase.firestore)
+    aar(libs.google.firebase.functions)
+    aar(libs.google.firebase.database)
+    aar(libs.google.firebase.config)
+    aar(libs.google.firebase.installations)
     // extracted aar dependencies
     // exclude lifecycle libs due to https://github.com/GitLiveApp/firebase-java-sdk/pull/15 - remove the exclude  once the dependencies in the aars are updated to the required version
     api(fileTree(mapOf("dir" to "build/jar", "include" to listOf("*.jar"), "exclude" to listOf("lifecycle-*"))))
     // polyfill dependencies
-    implementation("org.jetbrains.kotlin:kotlin-stdlib")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-core:1.6.0")
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
-    implementation("org.xerial:sqlite-jdbc:3.44.1.0")
+    implementation(libs.kotlinx.coroutines.core)
+    implementation(libs.kotlinx.serialization.core)
+    implementation(libs.kotlinx.serialization.json)
+    implementation(libs.xerial.sqlite.jdbc)
     // firebase dependencies
-    implementation("javax.inject:javax.inject:1")
-    implementation("com.squareup.okhttp3:okhttp:3.12.13")
-    implementation("io.grpc:grpc-protobuf-lite:1.52.1")
-    implementation("io.grpc:grpc-stub:1.52.1")
-    implementation("androidx.collection:collection:1.2.0")
-    implementation("io.grpc:grpc-okhttp:1.52.1")
-    implementation("androidx.lifecycle:lifecycle-common:2.8.0-rc01")
-    implementation("androidx.lifecycle:lifecycle-viewmodel:2.8.0-rc01")
+    implementation(libs.javax.inject)
+    implementation(libs.okhttp)
+    implementation(libs.io.grpc.protobuf.lite)
+    implementation(libs.io.grpc.stub)
+    implementation(libs.androidx.collection)
+    implementation(libs.io.grpc.okhttp)
+    implementation(libs.androidx.lifecycle.common)
+    implementation(libs.androidx.lifecycle.viewmodel)
 }
 
 tasks.named("publishToMavenLocal").configure {
@@ -183,7 +182,7 @@ tasks.named("publish").configure {
 }
 
 ktlint {
-    version.set("0.41.0")
+    version.set(libs.versions.ktlint.get())
 }
 
 signing {
