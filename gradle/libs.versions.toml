@@ -14,7 +14,7 @@ androidx-lifecycle-common = { module = "androidx.lifecycle:lifecycle-common", ve
 androidx-lifecycle-viewmodel = { module = "androidx.lifecycle:lifecycle-viewmodel", version.ref = "androidx-lifecycle" }
 google-firebase-config = { module = "com.google.firebase:firebase-config", version = "21.6.0" }
 google-firebase-database = { module = "com.google.firebase:firebase-database", version = "20.3.0" }
-google-firebase-firestore = { module = "com.google.firebase:firebase-firestore", version = "24.10.0" }
+google-firebase-firestore = { module = "com.google.firebase:firebase-firestore", version = "25.1.0" }
 google-firebase-functions = { module = "com.google.firebase:firebase-functions", version = "20.4.0" }
 google-firebase-installations = { module = "com.google.firebase:firebase-installations", version = "17.2.0" }
 io-grpc-okhttp = { module = "io.grpc:grpc-okhttp", version.ref = "io-grpc" }
