@@ -4,8 +4,8 @@ import com.google.firebase.FirebaseOptions
 import com.google.firebase.FirebasePlatform
 import com.google.firebase.firestore.firestore
 import com.google.firebase.initialize
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Test
@@ -34,7 +34,7 @@ class FirestoreTest : FirebaseTest() {
     }
 
     @Test
-    fun testFirestore(): Unit = runBlocking {
+    fun testFirestore(): Unit = runTest {
         val data = Data("jim")
         val doc = Firebase.firestore.document("sally/jim")
         doc.set(data)

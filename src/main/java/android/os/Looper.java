@@ -5,6 +5,10 @@ import javax.swing.*;
 public class Looper {
     private static final Looper main = new Looper();
 
+    public Thread getThread() {
+        return Thread.currentThread();
+    }
+
     public static Looper getMainLooper() {
         return main;
     }
