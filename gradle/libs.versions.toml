@@ -12,7 +12,7 @@ ktlint = "0.47.1"
 androidx-collection = { module = "androidx.collection:collection", version = "1.4.3" }
 androidx-lifecycle-common = { module = "androidx.lifecycle:lifecycle-common", version.ref = "androidx-lifecycle" }
 androidx-lifecycle-viewmodel = { module = "androidx.lifecycle:lifecycle-viewmodel", version.ref = "androidx-lifecycle" }
-google-firebase-config = { module = "com.google.firebase:firebase-config", version = "21.6.0" }
+google-firebase-config = { module = "com.google.firebase:firebase-config", version = "22.0.0" }
 google-firebase-database = { module = "com.google.firebase:firebase-database", version = "20.3.0" }
 google-firebase-firestore = { module = "com.google.firebase:firebase-firestore", version = "24.10.0" }
 google-firebase-functions = { module = "com.google.firebase:firebase-functions", version = "20.4.0" }
