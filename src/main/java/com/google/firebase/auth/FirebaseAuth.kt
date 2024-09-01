@@ -321,7 +321,7 @@ class FirebaseAuth constructor(val app: FirebaseApp) : InternalAuthProvider {
             .takeUnless { it.task.isComplete }
             ?: enqueueRefreshTokenCall(user)
         refreshSource.task.addOnSuccessListener { source.setResult(map(it)) }
-        refreshSource.task.addOnFailureListener { source.setException(it) }
+        refreshSource.task.addOnFailureListener { source.setException(FirebaseException(it.toString(), it)) }
     }
 
     private fun enqueueRefreshTokenCall(user: FirebaseUserImpl): TaskCompletionSource<FirebaseUserImpl> {
