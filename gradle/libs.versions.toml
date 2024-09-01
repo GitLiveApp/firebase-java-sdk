@@ -13,7 +13,7 @@ androidx-collection = { module = "androidx.collection:collection", version = "1.
 androidx-lifecycle-common = { module = "androidx.lifecycle:lifecycle-common", version.ref = "androidx-lifecycle" }
 androidx-lifecycle-viewmodel = { module = "androidx.lifecycle:lifecycle-viewmodel", version.ref = "androidx-lifecycle" }
 google-firebase-config = { module = "com.google.firebase:firebase-config", version = "21.6.0" }
-google-firebase-database = { module = "com.google.firebase:firebase-database", version = "20.3.0" }
+google-firebase-database = { module = "com.google.firebase:firebase-database", version = "21.0.0" }
 google-firebase-firestore = { module = "com.google.firebase:firebase-firestore", version = "24.10.0" }
 google-firebase-functions = { module = "com.google.firebase:firebase-functions", version = "20.4.0" }
 google-firebase-installations = { module = "com.google.firebase:firebase-installations", version = "17.2.0" }
