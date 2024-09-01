@@ -16,7 +16,7 @@ google-firebase-config = { module = "com.google.firebase:firebase-config", versi
 google-firebase-database = { module = "com.google.firebase:firebase-database", version = "20.3.0" }
 google-firebase-firestore = { module = "com.google.firebase:firebase-firestore", version = "24.10.0" }
 google-firebase-functions = { module = "com.google.firebase:firebase-functions", version = "20.4.0" }
-google-firebase-installations = { module = "com.google.firebase:firebase-installations", version = "17.2.0" }
+google-firebase-installations = { module = "com.google.firebase:firebase-installations", version = "18.0.0" }
 io-grpc-okhttp = { module = "io.grpc:grpc-okhttp", version.ref = "io-grpc" }
 io-grpc-protobuf-lite = { module = "io.grpc:grpc-protobuf-lite", version.ref = "io-grpc" }
 io-grpc-stub = { module = "io.grpc:grpc-stub", version.ref = "io-grpc" }
