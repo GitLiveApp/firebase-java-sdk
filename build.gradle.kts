@@ -1,3 +1,4 @@
+import java.util.Locale
 
 buildscript {
     repositories {
@@ -86,7 +87,7 @@ val jar by tasks.getting(Jar::class) {
 val sourceSets = project.the<SourceSetContainer>()
 
 val cleanLibs by tasks.creating(Delete::class) {
-    delete("$buildDir/libs")
+    delete("$${layout.buildDirectory.asFile.get().path}/libs")
 }
 
 publishing {
@@ -146,9 +147,11 @@ publishing {
 dependencies {
     compileOnly(libs.robolectric.android.all)
     testImplementation(libs.junit)
-    testImplementation(libs.kotlinx.coroutines.swing)
     testImplementation(libs.kotlinx.coroutines.play.services)
+    testImplementation(libs.kotlinx.coroutines.swing)
+    testImplementation(libs.kotlinx.coroutines.test)
     // firebase aars
+    aar(platform(libs.google.firebase.bom))
     aar(libs.google.firebase.firestore)
     aar(libs.google.firebase.functions)
     aar(libs.google.firebase.database)
@@ -195,7 +198,8 @@ signing {
 tasks.withType<com.github.benmanes.gradle.versions.updates.DependencyUpdatesTask> {
 
     fun isNonStable(version: String): Boolean {
-        val stableKeyword = listOf("RELEASE", "FINAL", "GA").any { version.toUpperCase().contains(it) }
+        val stableKeyword = listOf("RELEASE", "FINAL", "GA")
+            .any { version.uppercase(Locale.ROOT).contains(it) }
         val versionMatch = "^[0-9,.v-]+(-r)?$".toRegex().matches(version)
 
         return (stableKeyword || versionMatch).not()
