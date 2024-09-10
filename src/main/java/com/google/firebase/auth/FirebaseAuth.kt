@@ -245,6 +245,38 @@ class FirebaseAuth constructor(val app: FirebaseApp) : InternalAuthProvider {
         return source.task
     }
 
+    fun createUserWithEmailAndPassword(email: String, password: String): Task<AuthResult> {
+        val source = TaskCompletionSource<AuthResult>()
+        val body = RequestBody.create(
+            json,
+            JsonObject(mapOf("email" to JsonPrimitive(email), "password" to JsonPrimitive(password), "returnSecureToken" to JsonPrimitive(true))).toString()
+        )
+        val request = Request.Builder()
+            .url("https://www.googleapis.com/identitytoolkit/v3/relyingparty/signupNewUser?key=" + app.options.apiKey)
+            .post(body)
+            .build()
+        client.newCall(request).enqueue(object : Callback {
+
+            override fun onFailure(call: Call, e: IOException) {
+                source.setException(FirebaseException(e.toString(), e))
+            }
+
+            @Throws(IOException::class)
+            override fun onResponse(call: Call, response: Response) {
+                if (!response.isSuccessful) {
+                    source.setException(
+                        createAuthInvalidUserException("signupNewUser", request, response)
+                    )
+                } else {
+                    val responseBody = response.body()?.use { it.string() } ?: ""
+                    val user = FirebaseUserImpl(app, jsonParser.parseToJsonElement(responseBody).jsonObject)
+                    refreshToken(user, source) { AuthResult { it } }
+                }
+            }
+        })
+        return source.task
+    }
+
     fun signInWithEmailAndPassword(email: String, password: String): Task<AuthResult> {
         val source = TaskCompletionSource<AuthResult>()
         val body = RequestBody.create(
@@ -425,7 +457,6 @@ class FirebaseAuth constructor(val app: FirebaseApp) : InternalAuthProvider {
     }
 
     fun sendPasswordResetEmail(email: String, settings: ActionCodeSettings?): Task<Unit> = TODO()
-    fun createUserWithEmailAndPassword(email: String, password: String): Task<AuthResult> = TODO()
     fun signInWithCredential(authCredential: AuthCredential): Task<AuthResult> = TODO()
     fun checkActionCode(code: String): Task<ActionCodeResult> = TODO()
     fun confirmPasswordReset(code: String, newPassword: String): Task<Unit> = TODO()
