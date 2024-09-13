@@ -52,17 +52,24 @@ class FirebaseUserImpl private constructor(
     val idToken: String,
     val refreshToken: String,
     val expiresIn: Int,
-    val createdAt: Long
+    val createdAt: Long,
+    override val email: String
 ) : FirebaseUser() {
 
-    constructor(app: FirebaseApp, data: JsonObject, isAnonymous: Boolean = data["isAnonymous"]?.jsonPrimitive?.booleanOrNull ?: false) : this(
-        app,
-        isAnonymous,
-        data["uid"]?.jsonPrimitive?.contentOrNull ?: data["user_id"]?.jsonPrimitive?.contentOrNull ?: data["localId"]?.jsonPrimitive?.contentOrNull ?: "",
-        data["idToken"]?.jsonPrimitive?.contentOrNull ?: data.getValue("id_token").jsonPrimitive.content,
-        data["refreshToken"]?.jsonPrimitive?.contentOrNull ?: data.getValue("refresh_token").jsonPrimitive.content,
-        data["expiresIn"]?.jsonPrimitive?.intOrNull ?: data.getValue("expires_in").jsonPrimitive.int,
-        data["createdAt"]?.jsonPrimitive?.longOrNull ?: System.currentTimeMillis()
+    constructor(
+        app: FirebaseApp,
+        data: JsonObject,
+        isAnonymous: Boolean = data["isAnonymous"]?.jsonPrimitive?.booleanOrNull ?: false,
+        email: String = data.getOrElse("email"){ null }?.jsonPrimitive?.contentOrNull ?: ""
+    ): this(
+        app = app,
+        isAnonymous = isAnonymous,
+        uid = data["uid"]?.jsonPrimitive?.contentOrNull ?: data["user_id"]?.jsonPrimitive?.contentOrNull ?: data["localId"]?.jsonPrimitive?.contentOrNull ?: "",
+        idToken = data["idToken"]?.jsonPrimitive?.contentOrNull ?: data.getValue("id_token").jsonPrimitive.content,
+        refreshToken = data["refreshToken"]?.jsonPrimitive?.contentOrNull ?: data.getValue("refresh_token").jsonPrimitive.content,
+        expiresIn = data["expiresIn"]?.jsonPrimitive?.intOrNull ?: data.getValue("expires_in").jsonPrimitive.int,
+        createdAt = data["createdAt"]?.jsonPrimitive?.longOrNull ?: System.currentTimeMillis(),
+        email = email
     )
 
     val claims: Map<String, Any?> by lazy {
@@ -385,7 +392,7 @@ class FirebaseAuth constructor(val app: FirebaseApp) : InternalAuthProvider {
                     signOutAndThrowInvalidUserException(body.orEmpty(), "token API returned an error: $body")
                 } else {
                     jsonParser.parseToJsonElement(body!!).jsonObject.apply {
-                        val user = FirebaseUserImpl(app, this, user.isAnonymous)
+                        val user = FirebaseUserImpl(app, this, user.isAnonymous, user.email)
                         if (user.claims["aud"] != app.options.projectId) {
                             signOutAndThrowInvalidUserException(
                                 user.claims.toString(),
