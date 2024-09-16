@@ -1,4 +1,4 @@
-<h1 align="left">Firebase Java SDK <img alt="GitHub last commit" src="https://img.shields.io/github/last-commit/gitliveapp/firebase-java-sdk?style=flat-square"> <a href="https://git.live"><img src="https://img.shields.io/badge/collaborate-on%20gitlive-blueviolet?style=flat-square"></a></h1>
+<h1 align="left">Firebase Java SDK <img alt="GitHub last commit" src="https://img.shields.io/github/last-commit/gitliveapp/firebase-java-sdk?style=flat-square"> <a href="https://git.live"><img src="https://img.shields.io/endpoint?style=flat-square&url=https%3A%2F%2Fteamhub-dev.web.app%2Fbadge%3Forg%3DGitLiveApp%26repo%3Dfirebase-java-sdk"></a></h1>
 <img align="left" width="75px" src="https://avatars2.githubusercontent.com/u/42865805?s=200&v=4"> 
   <b>Built and maintained with 🧡 by <a href="https://git.live">GitLive</a></b><br/>
   <i>Development teams merge faster with GitLive</i><br/>
