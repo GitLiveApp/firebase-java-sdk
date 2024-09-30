@@ -3,11 +3,9 @@ import com.google.firebase.Firebase
 import com.google.firebase.FirebaseOptions
 import com.google.firebase.FirebasePlatform
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.firestore.firestore
 import com.google.firebase.initialize
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.test.runTest
-import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Before
@@ -17,7 +15,7 @@ import kotlin.random.Random
 
 internal class FirebaseAuthTest: FirebaseTest() {
 
-    private lateinit var auth: FirebaseAuth
+    private lateinit var auth : FirebaseAuth
 
     @Before
     fun initialize() {
