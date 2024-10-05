@@ -29,15 +29,9 @@ import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.longOrNull
-import okhttp3.Call
-import okhttp3.Callback
-import okhttp3.MediaType
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import okhttp3.RequestBody
-import okhttp3.Response
+import okhttp3.*
 import java.io.IOException
-import java.util.Base64
+import java.util.*
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.TimeUnit
 
@@ -60,8 +54,8 @@ class FirebaseUserImpl private constructor(
         app: FirebaseApp,
         data: JsonObject,
         isAnonymous: Boolean = data["isAnonymous"]?.jsonPrimitive?.booleanOrNull ?: false,
-        email: String = data.getOrElse("email"){ null }?.jsonPrimitive?.contentOrNull ?: ""
-    ): this(
+        email: String = data.getOrElse("email") { null }?.jsonPrimitive?.contentOrNull ?: ""
+    ) : this(
         app = app,
         isAnonymous = isAnonymous,
         uid = data["uid"]?.jsonPrimitive?.contentOrNull ?: data["user_id"]?.jsonPrimitive?.contentOrNull ?: data["localId"]?.jsonPrimitive?.contentOrNull ?: "",
