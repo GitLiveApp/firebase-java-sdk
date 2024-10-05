@@ -13,9 +13,9 @@ import org.junit.Test
 import java.io.File
 import kotlin.random.Random
 
-internal class FirebaseAuthTest: FirebaseTest() {
+internal class FirebaseAuthTest : FirebaseTest() {
 
-    private lateinit var auth : FirebaseAuth
+    private lateinit var auth: FirebaseAuth
 
     @Before
     fun initialize() {
@@ -48,8 +48,8 @@ internal class FirebaseAuthTest: FirebaseTest() {
             "test123"
         ).await()
         assertNotEquals(null, createResult.user?.uid)
-        //assertEquals(null, createResult.user?.displayName)
-        //assertEquals(null, createResult.user?.phoneNumber)
+        // assertEquals(null, createResult.user?.displayName)
+        // assertEquals(null, createResult.user?.phoneNumber)
         assertEquals(false, createResult.user?.isAnonymous)
         assertEquals(email, createResult.user?.email)
 
