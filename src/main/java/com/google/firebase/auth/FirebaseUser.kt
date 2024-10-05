@@ -7,8 +7,8 @@ abstract class FirebaseUser {
     abstract val isAnonymous: Boolean
     abstract fun delete(): Task<Void>
     abstract fun reload(): Task<Void>
+    abstract val email: String
 
-    val email: String get() = TODO()
     val displayName: String get() = TODO()
     val phoneNumber: String get() = TODO()
     val photoUrl: String? get() = TODO()
