@@ -11,7 +11,11 @@ jobs:
         with:
           distribution: 'zulu'
           java-version: 17
-      - name: Build
-        uses: eskatos/gradle-command-action@v3
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
         with:
-          arguments: build
+          node-version: 20
+      - name: Install Firebase CLI
+        run: npm install -g firebase-tools
+      - name: Build
+        run: firebase emulators:exec --project my-firebase-project --import=src/test/resources/firebase_data './gradlew build'
