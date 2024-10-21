@@ -60,8 +60,8 @@ class FirebaseUserImpl private constructor(
         app: FirebaseApp,
         data: JsonObject,
         isAnonymous: Boolean = data["isAnonymous"]?.jsonPrimitive?.booleanOrNull ?: false,
-        email: String = data.getOrElse("email"){ null }?.jsonPrimitive?.contentOrNull ?: ""
-    ): this(
+        email: String = data.getOrElse("email") { null }?.jsonPrimitive?.contentOrNull ?: ""
+    ) : this(
         app = app,
         isAnonymous = isAnonymous,
         uid = data["uid"]?.jsonPrimitive?.contentOrNull ?: data["user_id"]?.jsonPrimitive?.contentOrNull ?: data["localId"]?.jsonPrimitive?.contentOrNull ?: "",
