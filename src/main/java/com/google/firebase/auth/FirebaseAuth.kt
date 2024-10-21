@@ -128,6 +128,7 @@ class FirebaseUserImpl internal constructor(
         return source.task
     }
 
+    //TODO implement ActionCodeSettings and pass it to the url
     override fun verifyBeforeUpdateEmail(
         newEmail: String,
         actionCodeSettings: ActionCodeSettings?
