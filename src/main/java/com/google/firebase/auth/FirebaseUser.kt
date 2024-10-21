@@ -4,10 +4,12 @@ import com.google.android.gms.tasks.Task
 
 abstract class FirebaseUser {
     abstract val uid: String
+    abstract val email: String?
     abstract val isAnonymous: Boolean
     abstract fun delete(): Task<Void>
     abstract fun reload(): Task<Void>
-    abstract val email: String
+    abstract fun verifyBeforeUpdateEmail(newEmail: String, actionCodeSettings: ActionCodeSettings?): Task<Unit>
+    abstract fun updateEmail(email: String): Task<Unit>
 
     val displayName: String get() = TODO()
     val phoneNumber: String get() = TODO()
@@ -22,11 +24,9 @@ abstract class FirebaseUser {
     fun sendEmailVerification(): Task<Unit> = TODO()
     fun sendEmailVerification(actionCodeSettings: ActionCodeSettings): Task<Unit> = TODO()
     fun unlink(provider: String): Task<AuthResult> = TODO()
-    fun updateEmail(email: String): Task<Unit> = TODO()
     fun updatePassword(password: String): Task<Unit> = TODO()
     fun updatePhoneNumber(credential: AuthCredential): Task<Unit> = TODO()
     fun updateProfile(request: UserProfileChangeRequest): Task<Unit> = TODO()
-    fun verifyBeforeUpdateEmail(newEmail: String, actionCodeSettings: ActionCodeSettings?): Task<Unit> = TODO()
     fun reauthenticate(credential: AuthCredential): Task<Unit> = TODO()
     fun reauthenticateAndRetrieveData(credential: AuthCredential): Task<AuthResult> = TODO()
 }

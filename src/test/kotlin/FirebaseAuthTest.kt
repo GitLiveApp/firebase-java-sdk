@@ -1,3 +1,4 @@
+
 import android.app.Application
 import com.google.firebase.Firebase
 import com.google.firebase.FirebaseOptions
@@ -6,12 +7,13 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.initialize
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.test.runTest
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Before
 import org.junit.Test
 import java.io.File
-import kotlin.random.Random
+import java.util.UUID
 
 internal class FirebaseAuthTest : FirebaseTest() {
 
@@ -40,29 +42,30 @@ internal class FirebaseAuthTest : FirebaseTest() {
         auth = FirebaseAuth.getInstance(app = firebaseApp)
     }
 
+    @After
+    fun clear() {
+        auth.currentUser?.delete()
+    }
+
     @Test
     fun testCreateUserWithEmailAndPassword() = runTest {
-        val email = "test+${Random.nextInt(100000)}@test.com"
-        val createResult = auth.createUserWithEmailAndPassword(
-            email,
-            "test123"
-        ).await()
+        val email = "test+${UUID.randomUUID()}@test.com"
+        val createResult = auth.createUserWithEmailAndPassword(email, "test123").await()
         assertNotEquals(null, createResult.user?.uid)
         // assertEquals(null, createResult.user?.displayName)
         // assertEquals(null, createResult.user?.phoneNumber)
         assertEquals(false, createResult.user?.isAnonymous)
         assertEquals(email, createResult.user?.email)
+        assertNotEquals("", createResult.user!!.email)
 
         val signInResult = auth.signInWithEmailAndPassword(email, "test123").await()
         assertEquals(createResult.user?.uid, signInResult.user?.uid)
-
-        signInResult.user!!.delete()
     }
 
     @Test
     fun testSignInAnonymously() = runTest {
         val signInResult = auth.signInAnonymously().await()
+        assertNotEquals("", signInResult.user!!.email)
         assertEquals(true, signInResult.user?.isAnonymous)
-        signInResult.user!!.delete()
     }
 }
