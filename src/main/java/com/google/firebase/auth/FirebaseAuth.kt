@@ -41,10 +41,10 @@ import java.util.Base64
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.TimeUnit
 
-val jsonParser = Json { ignoreUnknownKeys = true }
+internal val jsonParser = Json { ignoreUnknownKeys = true }
 
 @Serializable
-class FirebaseUserImpl private constructor(
+class FirebaseUserImpl internal constructor(
     @Transient
     private val app: FirebaseApp = FirebaseApp.getInstance(),
     override val isAnonymous: Boolean,
@@ -53,14 +53,14 @@ class FirebaseUserImpl private constructor(
     val refreshToken: String,
     val expiresIn: Int,
     val createdAt: Long,
-    override val email: String
+    override val email: String?
 ) : FirebaseUser() {
 
     constructor(
         app: FirebaseApp,
         data: JsonObject,
         isAnonymous: Boolean = data["isAnonymous"]?.jsonPrimitive?.booleanOrNull ?: false,
-        email: String = data.getOrElse("email") { null }?.jsonPrimitive?.contentOrNull ?: ""
+        email: String? = data.getOrElse("email") { null }?.jsonPrimitive?.contentOrNull
     ) : this(
         app = app,
         isAnonymous = isAnonymous,
@@ -120,9 +120,57 @@ class FirebaseUserImpl private constructor(
         return source.task
     }
 
+    override fun updateEmail(email: String): Task<Unit> = FirebaseAuth.getInstance(app).updateEmail(email)
+
     override fun reload(): Task<Void> {
         val source = TaskCompletionSource<Void>()
         FirebaseAuth.getInstance(app).refreshToken(this, source) { null }
+        return source.task
+    }
+
+    override fun verifyBeforeUpdateEmail(
+        newEmail: String,
+        actionCodeSettings: ActionCodeSettings?
+    ): Task<Unit> {
+        val source = TaskCompletionSource<Unit>()
+        val body = RequestBody.create(
+            FirebaseAuth.getInstance(app).json,
+            JsonObject(
+                mapOf(
+                    "idToken" to JsonPrimitive(idToken),
+                    "email" to JsonPrimitive(email),
+                    "newEmail" to JsonPrimitive(newEmail),
+                    "requestType" to JsonPrimitive(OobRequestType.VERIFY_AND_CHANGE_EMAIL.name)
+                )
+            ).toString()
+        )
+        val request = Request.Builder()
+            .url("https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=" + app.options.apiKey)
+            .post(body)
+            .build()
+        FirebaseAuth.getInstance(app).client.newCall(request).enqueue(object : Callback {
+
+            override fun onFailure(call: Call, e: IOException) {
+                source.setException(FirebaseException(e.toString(), e))
+                e.printStackTrace()
+            }
+
+            @Throws(IOException::class)
+            override fun onResponse(call: Call, response: Response) {
+                if (!response.isSuccessful) {
+                    FirebaseAuth.getInstance(app).signOut()
+                    source.setException(
+                        FirebaseAuth.getInstance(app).createAuthInvalidUserException(
+                            "verifyEmail",
+                            request,
+                            response
+                        )
+                    )
+                } else {
+                    source.setResult(null)
+                }
+            }
+        })
         return source.task
     }
 
@@ -131,12 +179,49 @@ class FirebaseUserImpl private constructor(
 
 class FirebaseAuth constructor(val app: FirebaseApp) : InternalAuthProvider {
 
-    val json = MediaType.parse("application/json; charset=utf-8")
-    val client: OkHttpClient = OkHttpClient.Builder()
+    internal val json = MediaType.parse("application/json; charset=utf-8")
+    internal val client: OkHttpClient = OkHttpClient.Builder()
         .connectTimeout(60, TimeUnit.SECONDS)
         .readTimeout(60, TimeUnit.SECONDS)
         .writeTimeout(60, TimeUnit.SECONDS)
         .build()
+
+    private fun enqueueAuthPost(
+        url: String,
+        body: RequestBody,
+        setResult: (responseBody: String) -> FirebaseUserImpl?
+    ): TaskCompletionSource<AuthResult> {
+        val source = TaskCompletionSource<AuthResult>()
+        val request = Request.Builder()
+            .url("$url?key=" + app.options.apiKey)
+            .post(body)
+            .build()
+
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                source.setException(FirebaseException(e.toString(), e))
+            }
+
+            @Throws(IOException::class)
+            override fun onResponse(call: Call, response: Response) {
+                if (!response.isSuccessful) {
+                    source.setException(
+                        createAuthInvalidUserException("accounts", request, response)
+                    )
+                } else {
+                    if(response.body()?.use { it.string() }?.also { responseBody ->
+                        user = setResult(responseBody)
+                        source.setResult(AuthResult { user })
+                    } == null) {
+                        source.setException(
+                            createAuthInvalidUserException("accounts", request, response)
+                        )
+                    }
+                }
+            }
+        })
+        return source
+    }
 
     companion object {
 
@@ -145,6 +230,8 @@ class FirebaseAuth constructor(val app: FirebaseApp) : InternalAuthProvider {
 
         @JvmStatic
         fun getInstance(app: FirebaseApp): FirebaseAuth = app.get(FirebaseAuth::class.java)
+
+        private const val REFRESH_TOKEN_TAG = "refresh_token_tag"
     }
 
     private val internalIdTokenListeners = CopyOnWriteArrayList<com.google.firebase.auth.internal.IdTokenListener>()
@@ -192,127 +279,67 @@ class FirebaseAuth constructor(val app: FirebaseApp) : InternalAuthProvider {
         }
 
     fun signInAnonymously(): Task<AuthResult> {
-        val source = TaskCompletionSource<AuthResult>()
-        val body = RequestBody.create(json, JsonObject(mapOf("returnSecureToken" to JsonPrimitive(true))).toString())
-        val request = Request.Builder()
-            .url("https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=" + app.options.apiKey)
-            .post(body)
-            .build()
-        client.newCall(request).enqueue(object : Callback {
-
-            override fun onFailure(call: Call, e: IOException) {
-                source.setException(FirebaseException(e.toString(), e))
+        val source = enqueueAuthPost(
+            url = "https://identitytoolkit.googleapis.com/v1/accounts:signUp",
+            body = RequestBody.create(json, JsonObject(mapOf("returnSecureToken" to JsonPrimitive(true))).toString()),
+            setResult = { responseBody ->
+                FirebaseUserImpl(app, jsonParser.parseToJsonElement(responseBody).jsonObject, isAnonymous = true)
             }
-
-            @Throws(IOException::class)
-            override fun onResponse(call: Call, response: Response) {
-                if (!response.isSuccessful) {
-                    source.setException(
-                        createAuthInvalidUserException("accounts:signUp", request, response)
-                    )
-                } else {
-                    val body = response.body()!!.use { it.string() }
-                    user = FirebaseUserImpl(app, jsonParser.parseToJsonElement(body).jsonObject, true)
-                    source.setResult(AuthResult { user })
-                }
-            }
-        })
+        )
         return source.task
     }
 
     fun signInWithCustomToken(customToken: String): Task<AuthResult> {
-        val source = TaskCompletionSource<AuthResult>()
-        val body = RequestBody.create(
-            json,
-            JsonObject(mapOf("token" to JsonPrimitive(customToken), "returnSecureToken" to JsonPrimitive(true))).toString()
+        val source = enqueueAuthPost(
+            url = "https://www.googleapis.com/identitytoolkit/v3/relyingparty/verifyCustomToken",
+            body = RequestBody.create(
+                json,
+                JsonObject(mapOf("token" to JsonPrimitive(customToken), "returnSecureToken" to JsonPrimitive(true))).toString()
+            ),
+            setResult = { responseBody ->
+                FirebaseUserImpl(app, jsonParser.parseToJsonElement(responseBody).jsonObject)
+            }
         )
-        val request = Request.Builder()
-            .url("https://www.googleapis.com/identitytoolkit/v3/relyingparty/verifyCustomToken?key=" + app.options.apiKey)
-            .post(body)
-            .build()
-        client.newCall(request).enqueue(object : Callback {
-
-            override fun onFailure(call: Call, e: IOException) {
-                source.setException(FirebaseException(e.toString(), e))
-            }
-
-            @Throws(IOException::class)
-            override fun onResponse(call: Call, response: Response) {
-                if (!response.isSuccessful) {
-                    source.setException(
-                        createAuthInvalidUserException("verifyCustomToken", request, response)
-                    )
-                } else {
-                    val body = response.body()!!.use { it.string() }
-                    val user = FirebaseUserImpl(app, jsonParser.parseToJsonElement(body).jsonObject)
-                    refreshToken(user, source) { AuthResult { it } }
-                }
-            }
-        })
         return source.task
     }
 
     fun createUserWithEmailAndPassword(email: String, password: String): Task<AuthResult> {
-        val source = TaskCompletionSource<AuthResult>()
-        val body = RequestBody.create(
-            json,
-            JsonObject(mapOf("email" to JsonPrimitive(email), "password" to JsonPrimitive(password), "returnSecureToken" to JsonPrimitive(true))).toString()
-        )
-        val request = Request.Builder()
-            .url("https://www.googleapis.com/identitytoolkit/v3/relyingparty/signupNewUser?key=" + app.options.apiKey)
-            .post(body)
-            .build()
-        client.newCall(request).enqueue(object : Callback {
-
-            override fun onFailure(call: Call, e: IOException) {
-                source.setException(FirebaseException(e.toString(), e))
-            }
-
-            @Throws(IOException::class)
-            override fun onResponse(call: Call, response: Response) {
-                if (!response.isSuccessful) {
-                    source.setException(
-                        createAuthInvalidUserException("signupNewUser", request, response)
+        val source = enqueueAuthPost(
+            url = "https://www.googleapis.com/identitytoolkit/v3/relyingparty/signupNewUser",
+            body = RequestBody.create(
+                json,
+                JsonObject(
+                    mapOf(
+                        "email" to JsonPrimitive(email),
+                        "password" to JsonPrimitive(password),
+                        "returnSecureToken" to JsonPrimitive(true)
                     )
-                } else {
-                    val responseBody = response.body()?.use { it.string() } ?: ""
-                    val user = FirebaseUserImpl(app, jsonParser.parseToJsonElement(responseBody).jsonObject)
-                    refreshToken(user, source) { AuthResult { it } }
-                }
+                ).toString()
+            ),
+            setResult = { responseBody ->
+                FirebaseUserImpl(app, jsonParser.parseToJsonElement(responseBody).jsonObject)
             }
-        })
+        )
         return source.task
     }
 
     fun signInWithEmailAndPassword(email: String, password: String): Task<AuthResult> {
-        val source = TaskCompletionSource<AuthResult>()
-        val body = RequestBody.create(
-            json,
-            JsonObject(mapOf("email" to JsonPrimitive(email), "password" to JsonPrimitive(password), "returnSecureToken" to JsonPrimitive(true))).toString()
-        )
-        val request = Request.Builder()
-            .url("https://www.googleapis.com/identitytoolkit/v3/relyingparty/verifyPassword?key=" + app.options.apiKey)
-            .post(body)
-            .build()
-        client.newCall(request).enqueue(object : Callback {
-
-            override fun onFailure(call: Call, e: IOException) {
-                source.setException(FirebaseException(e.toString(), e))
-            }
-
-            @Throws(IOException::class)
-            override fun onResponse(call: Call, response: Response) {
-                if (!response.isSuccessful) {
-                    source.setException(
-                        createAuthInvalidUserException("verifyPassword", request, response)
+        val source = enqueueAuthPost(
+            url = "https://www.googleapis.com/identitytoolkit/v3/relyingparty/verifyPassword",
+            body = RequestBody.create(
+                json,
+                JsonObject(
+                    mapOf(
+                        "email" to JsonPrimitive(email),
+                        "password" to JsonPrimitive(password),
+                        "returnSecureToken" to JsonPrimitive(true)
                     )
-                } else {
-                    val body = response.body()!!.use { it.string() }
-                    val user = FirebaseUserImpl(app, jsonParser.parseToJsonElement(body).jsonObject)
-                    refreshToken(user, source) { AuthResult { it } }
-                }
+                ).toString()
+            ),
+            setResult = { responseBody ->
+                FirebaseUserImpl(app, jsonParser.parseToJsonElement(responseBody).jsonObject)
             }
-        })
+        )
         return source.task
     }
 
@@ -336,7 +363,10 @@ class FirebaseAuth constructor(val app: FirebaseApp) : InternalAuthProvider {
     }
 
     fun signOut() {
-        // todo cancel token refresher
+        // cancel token refresher
+        client.dispatcher().queuedCalls().find { it.request().tag() == REFRESH_TOKEN_TAG }?.cancel() ?: {
+            client.dispatcher().runningCalls().find { it.request().tag() == REFRESH_TOKEN_TAG }?.cancel()
+        }
         user = null
     }
 
@@ -377,6 +407,7 @@ class FirebaseAuth constructor(val app: FirebaseApp) : InternalAuthProvider {
         val request = Request.Builder()
             .url("https://securetoken.googleapis.com/v1/token?key=" + app.options.apiKey)
             .post(body)
+            .tag(REFRESH_TOKEN_TAG)
             .build()
 
         client.newCall(request).enqueue(object : Callback {
@@ -387,20 +418,21 @@ class FirebaseAuth constructor(val app: FirebaseApp) : InternalAuthProvider {
 
             @Throws(IOException::class)
             override fun onResponse(call: Call, response: Response) {
-                val body = response.body()?.use { it.string() }
-                if (!response.isSuccessful) {
-                    signOutAndThrowInvalidUserException(body.orEmpty(), "token API returned an error: $body")
+                val responseBody = response.body()?.use { it.string() }
+
+                if (!response.isSuccessful || responseBody == null) {
+                    signOutAndThrowInvalidUserException(responseBody.orEmpty(), "token API returned an error: $body")
                 } else {
-                    jsonParser.parseToJsonElement(body!!).jsonObject.apply {
-                        val user = FirebaseUserImpl(app, this, user.isAnonymous, user.email)
-                        if (user.claims["aud"] != app.options.projectId) {
+                    jsonParser.parseToJsonElement(responseBody).jsonObject.apply {
+                        val newUser = FirebaseUserImpl(app, this, user.isAnonymous, user.email)
+                        if (newUser.claims["aud"] != app.options.projectId) {
                             signOutAndThrowInvalidUserException(
-                                user.claims.toString(),
-                                "Project ID's do not match ${user.claims["aud"]} != ${app.options.projectId}"
+                                newUser.claims.toString(),
+                                "Project ID's do not match ${newUser.claims["aud"]} != ${app.options.projectId}"
                             )
                         } else {
-                            this@FirebaseAuth.user = user
-                            source.setResult(user)
+                            this@FirebaseAuth.user = newUser
+                            source.setResult(newUser)
                         }
                     }
                 }
@@ -412,6 +444,65 @@ class FirebaseAuth constructor(val app: FirebaseApp) : InternalAuthProvider {
             }
         })
         return source
+    }
+
+    internal fun updateEmail(email: String): Task<Unit> {
+        val source = TaskCompletionSource<Unit>()
+
+        val body = RequestBody.create(
+            json,
+            JsonObject(
+                mapOf(
+                    "idToken" to JsonPrimitive(user?.idToken),
+                    "email" to JsonPrimitive(email),
+                    "returnSecureToken" to JsonPrimitive(true)
+                )
+            ).toString()
+        )
+        val request = Request.Builder()
+            .url("https://identitytoolkit.googleapis.com/v1/accounts:update?key=" + app.options.apiKey)
+            .post(body)
+            .build()
+
+        client.newCall(request).enqueue(object : Callback {
+
+            override fun onFailure(call: Call, e: IOException) {
+                source.setException(FirebaseException(e.toString(), e))
+            }
+
+            @Throws(IOException::class)
+            override fun onResponse(call: Call, response: Response) {
+                if (!response.isSuccessful) {
+                    signOut()
+                    source.setException(
+                        createAuthInvalidUserException(
+                            "updateEmail",
+                            request,
+                            response
+                        )
+                    )
+                } else {
+                    val newBody = jsonParser.parseToJsonElement(
+                        response.body()?.use { it.string() } ?: ""
+                    ).jsonObject
+
+                    user?.let { prev ->
+                        user = FirebaseUserImpl(
+                            app = app,
+                            isAnonymous = prev.isAnonymous,
+                            uid = prev.uid,
+                            idToken = newBody["idToken"]?.jsonPrimitive?.contentOrNull ?: prev.idToken,
+                            refreshToken = newBody["refreshToken"]?.jsonPrimitive?.contentOrNull ?: prev.refreshToken,
+                            expiresIn = newBody["expiresIn"]?.jsonPrimitive?.intOrNull ?: prev.expiresIn,
+                            createdAt = prev.createdAt,
+                            email = newBody["newEmail"]?.jsonPrimitive?.contentOrNull ?: prev.email
+                        )
+                    }
+                    source.setResult(null)
+                }
+            }
+        })
+        return source.task
     }
 
     override fun getUid(): String? {
@@ -464,7 +555,6 @@ class FirebaseAuth constructor(val app: FirebaseApp) : InternalAuthProvider {
     }
 
     fun sendPasswordResetEmail(email: String, settings: ActionCodeSettings?): Task<Unit> = TODO()
-    fun signInWithCredential(authCredential: AuthCredential): Task<AuthResult> = TODO()
     fun checkActionCode(code: String): Task<ActionCodeResult> = TODO()
     fun confirmPasswordReset(code: String, newPassword: String): Task<Unit> = TODO()
     fun fetchSignInMethodsForEmail(email: String): Task<SignInMethodQueryResult> = TODO()
