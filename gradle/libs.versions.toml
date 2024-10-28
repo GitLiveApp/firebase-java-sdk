@@ -1,7 +1,7 @@
 [versions]
 androidx-lifecycle = "2.9.0-alpha01"
 ben-manes-versions = "0.51.0"
-google-firebase-bom = "32.7.0"
+google-firebase-bom = "33.5.1"
 io-grpc = "1.66.0"
 jlleitschuh-ktlint = "12.1.1"
 kotlin = "2.0.20"
