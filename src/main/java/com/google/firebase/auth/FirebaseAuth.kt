@@ -43,6 +43,15 @@ import java.util.concurrent.TimeUnit
 
 internal val jsonParser = Json { ignoreUnknownKeys = true }
 
+class UrlFactory(
+    private val app: FirebaseApp,
+    private val emulatorUrl: String? = null
+) {
+    fun buildUrl(uri: String): String {
+        return "${emulatorUrl ?: "https://"}$uri?key=${app.options.apiKey}"
+    }
+}
+
 @Serializable
 class FirebaseUserImpl internal constructor(
     @Transient
@@ -53,14 +62,17 @@ class FirebaseUserImpl internal constructor(
     val refreshToken: String,
     val expiresIn: Int,
     val createdAt: Long,
-    override val email: String?
+    override val email: String?,
+    @Transient
+    private val urlFactory: UrlFactory = UrlFactory(app)
 ) : FirebaseUser() {
 
     constructor(
         app: FirebaseApp,
         data: JsonObject,
         isAnonymous: Boolean = data["isAnonymous"]?.jsonPrimitive?.booleanOrNull ?: false,
-        email: String? = data.getOrElse("email") { null }?.jsonPrimitive?.contentOrNull
+        email: String? = data.getOrElse("email") { null }?.jsonPrimitive?.contentOrNull,
+        urlFactory: UrlFactory = UrlFactory(app)
     ) : this(
         app = app,
         isAnonymous = isAnonymous,
@@ -69,10 +81,11 @@ class FirebaseUserImpl internal constructor(
         refreshToken = data["refreshToken"]?.jsonPrimitive?.contentOrNull ?: data.getValue("refresh_token").jsonPrimitive.content,
         expiresIn = data["expiresIn"]?.jsonPrimitive?.intOrNull ?: data.getValue("expires_in").jsonPrimitive.int,
         createdAt = data["createdAt"]?.jsonPrimitive?.longOrNull ?: System.currentTimeMillis(),
-        email = email
+        email = email,
+        urlFactory = urlFactory
     )
 
-    val claims: Map<String, Any?> by lazy {
+    internal val claims: Map<String, Any?> by lazy {
         jsonParser
             .parseToJsonElement(String(Base64.getUrlDecoder().decode(idToken.split(".")[1])))
             .jsonObject
@@ -80,7 +93,7 @@ class FirebaseUserImpl internal constructor(
             .orEmpty()
     }
 
-    val JsonElement.value get(): Any? = when (this) {
+    internal val JsonElement.value get(): Any? = when (this) {
         is JsonNull -> null
         is JsonArray -> map { it.value }
         is JsonObject -> jsonObject.mapValues { (_, it) -> it.value }
@@ -92,7 +105,7 @@ class FirebaseUserImpl internal constructor(
         val source = TaskCompletionSource<Void>()
         val body = RequestBody.create(FirebaseAuth.getInstance(app).json, JsonObject(mapOf("idToken" to JsonPrimitive(idToken))).toString())
         val request = Request.Builder()
-            .url("https://www.googleapis.com/identitytoolkit/v3/relyingparty/deleteAccount?key=" + app.options.apiKey)
+            .url(urlFactory.buildUrl("www.googleapis.com/identitytoolkit/v3/relyingparty/deleteAccount"))
             .post(body)
             .build()
         FirebaseAuth.getInstance(app).client.newCall(request).enqueue(object : Callback {
@@ -211,9 +224,9 @@ class FirebaseAuth constructor(val app: FirebaseApp) : InternalAuthProvider {
                     )
                 } else {
                     if(response.body()?.use { it.string() }?.also { responseBody ->
-                        user = setResult(responseBody)
-                        source.setResult(AuthResult { user })
-                    } == null) {
+                            user = setResult(responseBody)
+                            source.setResult(AuthResult { user })
+                        } == null) {
                         source.setException(
                             createAuthInvalidUserException("accounts", request, response)
                         )
@@ -278,6 +291,8 @@ class FirebaseAuth constructor(val app: FirebaseApp) : InternalAuthProvider {
                 }
             }
         }
+
+    private var urlFactory = UrlFactory(app)
 
     fun signInAnonymously(): Task<AuthResult> {
         val source = enqueueAuthPost(
@@ -358,8 +373,8 @@ class FirebaseAuth constructor(val app: FirebaseApp) : InternalAuthProvider {
                 ?.contentOrNull
                 ?: "UNKNOWN_ERROR",
             "$action API returned an error, " +
-                "with url [${request.method()}] ${request.url()} ${request.body()} -- " +
-                "response [${response.code()}] ${response.message()} $body"
+                    "with url [${request.method()}] ${request.url()} ${request.body()} -- " +
+                    "response [${response.code()}] ${response.message()} $body"
         )
     }
 
@@ -406,7 +421,7 @@ class FirebaseAuth constructor(val app: FirebaseApp) : InternalAuthProvider {
             ).toString()
         )
         val request = Request.Builder()
-            .url("https://securetoken.googleapis.com/v1/token?key=" + app.options.apiKey)
+            .url(urlFactory.buildUrl("securetoken.googleapis.com/v1/token"))
             .post(body)
             .tag(REFRESH_TOKEN_TAG)
             .build()
@@ -568,5 +583,8 @@ class FirebaseAuth constructor(val app: FirebaseApp) : InternalAuthProvider {
     fun signInWithEmailLink(email: String, link: String): Task<AuthResult> = TODO()
 
     fun setLanguageCode(value: String): Nothing = TODO()
-    fun useEmulator(host: String, port: Int): Unit = TODO()
+
+    fun useEmulator(host: String, port: Int) {
+        urlFactory = UrlFactory(app, "http://$host:$port/")
+    }
 }

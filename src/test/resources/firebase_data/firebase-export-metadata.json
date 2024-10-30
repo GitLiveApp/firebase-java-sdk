@@ -1,0 +1,7 @@
+{
+  "version": "13.3.1",
+  "auth": {
+    "version": "13.3.1",
+    "path": "auth_export"
+  }
+}
