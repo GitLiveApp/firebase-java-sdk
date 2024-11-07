@@ -425,11 +425,11 @@ class FirebaseAuth constructor(
                 setResult = { responseBody ->
                     FirebaseUserImpl(app, jsonParser.parseToJsonElement(responseBody).jsonObject)
                 },
-            ).task.continueWith {
+            ).task.addOnSuccessListener {
                 updateByGetAccountInfo()
 >>>>>>> 25efe1c (ktlint formatting + update of user data after signInWithCustomToken + photoUrl and displayName implementation)
             }
-        return source.result
+        return source
     }
 
     internal fun updateByGetAccountInfo(): Task<AuthResult> {
