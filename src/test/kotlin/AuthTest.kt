@@ -53,6 +53,21 @@ class AuthTest : FirebaseTest() {
             assertEquals(false, auth.currentUser?.isAnonymous)
         }
 
+    /*@Test
+    fun `should authenticate via custom token`() =
+        runTest {
+            val user = auth.createUserWithEmailAndPassword(email, "test123").await()
+            auth
+                .signInWithCustomToken(
+                    user.user
+                        .getIdToken(false)
+                        .await()
+                        .token ?: "",
+                ).await()
+
+            assertEquals(false, auth.currentUser?.isAnonymous)
+        }*/
+
     @Test
     fun `should update displayName and photoUrl`() =
         runTest {
