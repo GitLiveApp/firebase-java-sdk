@@ -25,7 +25,7 @@ You can add the library via Gradle:
 
 ```kotlin
 dependencies {
-    implementation("dev.gitlive:firebase-java-sdk:0.4.6")
+    implementation("dev.gitlive:firebase-java-sdk:0.4.7")
 }
 ```
 
@@ -35,7 +35,7 @@ Or Maven:
 <dependency>
     <groupId>dev.gitlive</groupId>
     <artifactId>firebase-java-sdk</artifactId>
-    <version>0.4.6</version>
+    <version>0.4.7</version>
 </dependency>
 ```
 
