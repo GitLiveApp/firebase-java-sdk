@@ -3,12 +3,15 @@ package android.net
 import java.net.URI
 import java.util.Collections
 
-class Uri(private val uri: URI) {
-
+class Uri(
+    private val uri: URI,
+) {
     companion object {
         @JvmStatic
         fun parse(uriString: String) = Uri(URI.create(uriString))
     }
+
+    override fun toString(): String = uri.toString()
 
     val scheme get() = uri.scheme
     val port get() = uri.port

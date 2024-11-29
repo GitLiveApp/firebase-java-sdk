@@ -3,31 +3,72 @@ import com.google.firebase.Firebase
 import com.google.firebase.FirebaseApp
 import com.google.firebase.FirebaseOptions
 import com.google.firebase.FirebasePlatform
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.initialize
+import com.google.firebase.ktx.initialize
+import org.junit.After
 import org.junit.Before
 import java.io.File
 
 abstract class FirebaseTest {
+    protected lateinit var auth: FirebaseAuth
+
     protected val app: FirebaseApp get() {
-        val options = FirebaseOptions.Builder()
-            .setProjectId("my-firebase-project")
-            .setApplicationId("1:27992087142:android:ce3b6448250083d1")
-            .setApiKey("AIzaSyADUe90ULnQDuGShD9W23RDP0xmeDc6Mvw")
-            .build()
+        val options =
+            FirebaseOptions
+                .Builder()
+                .setProjectId("fir-java-sdk")
+                .setApplicationId("1:341458593155:web:bf8e1aa37efe01f32d42b6")
+                .setApiKey("AIzaSyCvVHjTJHyeStnzIE7J9LLtHqWk6reGM08")
+                .setDatabaseUrl("https://fir-java-sdk-default-rtdb.firebaseio.com")
+                .setStorageBucket("fir-java-sdk.appspot.com")
+                .setGcmSenderId("341458593155")
+                .build()
 
         return Firebase.initialize(Application(), options)
     }
 
     @Before
     fun beforeEach() {
-        FirebasePlatform.initializeFirebasePlatform(object : FirebasePlatform() {
-            val storage = mutableMapOf<String, String>()
-            override fun store(key: String, value: String) = storage.set(key, value)
-            override fun retrieve(key: String) = storage[key]
-            override fun clear(key: String) { storage.remove(key) }
-            override fun log(msg: String) = println(msg)
-            override fun getDatabasePath(name: String) = File("./build/$name")
-        })
+        FirebasePlatform.initializeFirebasePlatform(
+            object : FirebasePlatform() {
+                val storage = mutableMapOf<String, String>()
+
+                override fun store(
+                    key: String,
+                    value: String,
+                ) = storage.set(key, value)
+
+                override fun retrieve(key: String) = storage[key]
+
+                override fun clear(key: String) {
+                    storage.remove(key)
+                }
+
+                override fun log(msg: String) = println(msg)
+
+                override fun getDatabasePath(name: String) = File("./build/$name")
+            },
+        )
+        val options =
+            FirebaseOptions
+                .Builder()
+                .setProjectId("fir-java-sdk")
+                .setApplicationId("1:341458593155:web:bf8e1aa37efe01f32d42b6")
+                .setApiKey("AIzaSyCvVHjTJHyeStnzIE7J9LLtHqWk6reGM08")
+                .setDatabaseUrl("https://fir-java-sdk-default-rtdb.firebaseio.com")
+                .setStorageBucket("fir-java-sdk.appspot.com")
+                .setGcmSenderId("341458593155")
+                .build()
+
+        val firebaseApp = Firebase.initialize(Application(), options)
+        auth = FirebaseAuth.getInstance(app = firebaseApp)
+
         FirebaseApp.clearInstancesForTest()
+    }
+
+    @After
+    fun clear() {
+        auth.currentUser?.delete()
     }
 }
