@@ -96,19 +96,10 @@ class FirebaseUserImpl internal constructor(
         jsonParser
             .parseToJsonElement(String(Base64.getUrlDecoder().decode(idToken.split(".")[1])))
             .jsonObject
-            .run { value as Map<String, Any?>? }
+            .run { value as? Map<String, Any?>? }
             .orEmpty()
     }
 
-<<<<<<< HEAD
-    val JsonElement.value get(): Any? = when (this) {
-        is JsonNull -> null
-        is JsonArray -> map { it.value }
-        is JsonObject -> jsonObject.mapValues { (_, it) -> it.value }
-        is JsonPrimitive -> booleanOrNull ?: doubleOrNull ?: content
-        else -> TODO()
-    }
-=======
     internal val JsonElement.value get(): Any? =
         when (this) {
             is JsonNull -> null
@@ -117,7 +108,6 @@ class FirebaseUserImpl internal constructor(
             is JsonPrimitive -> booleanOrNull ?: doubleOrNull ?: content
             else -> TODO()
         }
->>>>>>> 25efe1c (ktlint formatting + update of user data after signInWithCustomToken + photoUrl and displayName implementation)
 
     override fun delete(): Task<Void> {
         val source = TaskCompletionSource<Void>()
@@ -261,19 +251,10 @@ class FirebaseAuth constructor(
         setResult: (responseBody: String) -> FirebaseUserImpl?,
     ): TaskCompletionSource<AuthResult> {
         val source = TaskCompletionSource<AuthResult>()
-<<<<<<< HEAD
         val request = Request.Builder()
             .url(urlFactory.buildUrl(url))
             .post(body)
             .build()
-=======
-        val request =
-            Request
-                .Builder()
-                .url(urlFactory.buildUrl(url))
-                .post(body)
-                .build()
->>>>>>> 25efe1c (ktlint formatting + update of user data after signInWithCustomToken + photoUrl and displayName implementation)
 
         client.newCall(request).enqueue(
             object : Callback {
@@ -284,26 +265,12 @@ class FirebaseAuth constructor(
                     source.setException(FirebaseException(e.toString(), e))
                 }
 
-<<<<<<< HEAD
-            @Throws(IOException::class)
-            override fun onResponse(call: Call, response: Response) {
-                if (!response.isSuccessful) {
-                    source.setException(
-                        createAuthInvalidUserException("accounts", request, response)
-                    )
-                } else {
-                    if(response.body()?.use { it.string() }?.also { responseBody ->
-                        user = setResult(responseBody)
-                        source.setResult(AuthResult { user })
-                    } == null) {
-=======
                 @Throws(IOException::class)
                 override fun onResponse(
                     call: Call,
                     response: Response,
                 ) {
                     if (!response.isSuccessful) {
->>>>>>> 25efe1c (ktlint formatting + update of user data after signInWithCustomToken + photoUrl and displayName implementation)
                         source.setException(
                             createAuthInvalidUserException("accounts", request, response),
                         )
@@ -325,9 +292,6 @@ class FirebaseAuth constructor(
     }
 
     companion object {
-        @JvmStatic
-        fun getInstance(): FirebaseAuth = getInstance(FirebaseApp.getInstance())
-
         @JvmStatic
         fun getInstance(app: FirebaseApp): FirebaseAuth = app.get(FirebaseAuth::class.java)
 
@@ -382,57 +346,33 @@ class FirebaseAuth constructor(
     private var urlFactory = UrlFactory(app)
 
     fun signInAnonymously(): Task<AuthResult> {
-<<<<<<< HEAD
         val source = enqueueAuthPost(
             url = "identitytoolkit.googleapis.com/v1/accounts:signUp",
             body = RequestBody.create(json, JsonObject(mapOf("returnSecureToken" to JsonPrimitive(true))).toString()),
             setResult = { responseBody ->
                 FirebaseUserImpl(app, jsonParser.parseToJsonElement(responseBody).jsonObject, isAnonymous = true)
-            }
+            },
         )
-=======
-        val source =
-            enqueueAuthPost(
-                url = "identitytoolkit.googleapis.com/v1/accounts:signUp",
-                body = RequestBody.create(json, JsonObject(mapOf("returnSecureToken" to JsonPrimitive(true))).toString()),
-                setResult = { responseBody ->
-                    FirebaseUserImpl(app, jsonParser.parseToJsonElement(responseBody).jsonObject, isAnonymous = true)
-                },
-            )
->>>>>>> 25efe1c (ktlint formatting + update of user data after signInWithCustomToken + photoUrl and displayName implementation)
         return source.task
     }
 
     fun signInWithCustomToken(customToken: String): Task<AuthResult> {
-<<<<<<< HEAD
         val source = enqueueAuthPost(
             url = "www.googleapis.com/identitytoolkit/v3/relyingparty/verifyCustomToken",
             body = RequestBody.create(
                 json,
-                JsonObject(mapOf("token" to JsonPrimitive(customToken), "returnSecureToken" to JsonPrimitive(true))).toString()
+                JsonObject(mapOf("token" to JsonPrimitive(customToken), "returnSecureToken" to JsonPrimitive(true))).toString(),
             ),
             setResult = { responseBody ->
                 FirebaseUserImpl(app, jsonParser.parseToJsonElement(responseBody).jsonObject)
-=======
-        val source =
-            enqueueAuthPost(
-                url = "www.googleapis.com/identitytoolkit/v3/relyingparty/verifyCustomToken",
-                body =
-                    RequestBody.create(
-                        json,
-                        JsonObject(mapOf("token" to JsonPrimitive(customToken), "returnSecureToken" to JsonPrimitive(true))).toString(),
-                    ),
-                setResult = { responseBody ->
-                    FirebaseUserImpl(app, jsonParser.parseToJsonElement(responseBody).jsonObject)
-                },
-            ).task.addOnSuccessListener {
-                updateByGetAccountInfo()
->>>>>>> 25efe1c (ktlint formatting + update of user data after signInWithCustomToken + photoUrl and displayName implementation)
-            }
-        return source
+            },
+        ).task.continueWith {
+            updateByGetAccountInfo()
+        }
+        return source.result
     }
 
-    internal fun updateByGetAccountInfo(): Task<AuthResult> {
+    private fun updateByGetAccountInfo(): Task<AuthResult> {
         val source = TaskCompletionSource<AuthResult>()
 
         val body =
@@ -496,18 +436,6 @@ class FirebaseAuth constructor(
         return source.task
     }
 
-<<<<<<< HEAD
-    fun createUserWithEmailAndPassword(email: String, password: String): Task<AuthResult> {
-        val source = enqueueAuthPost(
-            url = "www.googleapis.com/identitytoolkit/v3/relyingparty/signupNewUser",
-            body = RequestBody.create(
-                json,
-                JsonObject(
-                    mapOf(
-                        "email" to JsonPrimitive(email),
-                        "password" to JsonPrimitive(password),
-                        "returnSecureToken" to JsonPrimitive(true)
-=======
     fun createUserWithEmailAndPassword(
         email: String,
         password: String,
@@ -530,33 +458,12 @@ class FirebaseAuth constructor(
                     FirebaseUserImpl(
                         app = app,
                         data = jsonParser.parseToJsonElement(responseBody).jsonObject,
->>>>>>> 25efe1c (ktlint formatting + update of user data after signInWithCustomToken + photoUrl and displayName implementation)
                     )
                 },
             )
         return source.task
     }
 
-<<<<<<< HEAD
-
-    fun signInWithEmailAndPassword(email: String, password: String): Task<AuthResult> {
-        val source = enqueueAuthPost(
-            url = "www.googleapis.com/identitytoolkit/v3/relyingparty/verifyPassword",
-            body = RequestBody.create(
-                json,
-                JsonObject(
-                    mapOf(
-                        "email" to JsonPrimitive(email),
-                        "password" to JsonPrimitive(password),
-                        "returnSecureToken" to JsonPrimitive(true)
-                    )
-                ).toString()
-            ),
-            setResult = { responseBody ->
-                FirebaseUserImpl(app, jsonParser.parseToJsonElement(responseBody).jsonObject)
-            }
-        )
-=======
     fun signInWithEmailAndPassword(
         email: String,
         password: String,
@@ -579,7 +486,6 @@ class FirebaseAuth constructor(
                     FirebaseUserImpl(app, jsonParser.parseToJsonElement(responseBody).jsonObject)
                 },
             )
->>>>>>> 25efe1c (ktlint formatting + update of user data after signInWithCustomToken + photoUrl and displayName implementation)
         return source.task
     }
 
@@ -600,11 +506,7 @@ class FirebaseAuth constructor(
                 ?: "UNKNOWN_ERROR",
             "$action API returned an error, " +
                 "with url [${request.method()}] ${request.url()} ${request.body()} -- " +
-<<<<<<< HEAD
-                "response [${response.code()}] ${response.message()} $body"
-=======
                 "response [${response.code()}] ${response.message()} $body",
->>>>>>> 25efe1c (ktlint formatting + update of user data after signInWithCustomToken + photoUrl and displayName implementation)
         )
     }
 
@@ -913,20 +815,12 @@ class FirebaseAuth constructor(
         idTokenListeners.remove(listener)
     }
 
-<<<<<<< HEAD
     fun useEmulator(host: String, port: Int) {
         urlFactory = UrlFactory(app, "http://$host:$port/")
     }
 
     fun sendPasswordResetEmail(email: String, settings: ActionCodeSettings?): Task<Unit> = TODO()
     fun signInWithCredential(authCredential: AuthCredential): Task<AuthResult> = TODO()
-=======
-    fun sendPasswordResetEmail(
-        email: String,
-        settings: ActionCodeSettings?,
-    ): Task<Unit> = TODO()
-
->>>>>>> 25efe1c (ktlint formatting + update of user data after signInWithCustomToken + photoUrl and displayName implementation)
     fun checkActionCode(code: String): Task<ActionCodeResult> = TODO()
 
     fun confirmPasswordReset(
@@ -957,14 +851,4 @@ class FirebaseAuth constructor(
     ): Task<AuthResult> = TODO()
 
     fun setLanguageCode(value: String): Nothing = TODO()
-<<<<<<< HEAD
-=======
-
-    fun useEmulator(
-        host: String,
-        port: Int,
-    ) {
-        urlFactory = UrlFactory(app, "http://$host:$port/")
-    }
->>>>>>> 25efe1c (ktlint formatting + update of user data after signInWithCustomToken + photoUrl and displayName implementation)
 }

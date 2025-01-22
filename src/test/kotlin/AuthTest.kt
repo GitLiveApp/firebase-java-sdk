@@ -107,6 +107,6 @@ class AuthTest : FirebaseTest() {
                     }
                 }
 
-            assertEquals("INVALID_PASSWORD", exception.errorCode)
+            assertEquals("INVALID_LOGIN_CREDENTIALS", exception.errorCode)
         }
 }
