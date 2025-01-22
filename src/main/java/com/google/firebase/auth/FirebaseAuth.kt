@@ -550,38 +550,32 @@ class FirebaseAuth constructor(
             .takeUnless { it.task.isComplete }
             ?: enqueueRefreshTokenCall(user)
         refreshSource.task.addOnSuccessListener { source.setResult(map(it)) }
-        refreshSource.task.addOnFailureListener { source.setException(FirebaseException(it.toString(), it)) }
+        refreshSource.task.addOnFailureListener { source.setException(it) }
     }
 
     private fun enqueueRefreshTokenCall(user: FirebaseUserImpl): TaskCompletionSource<FirebaseUserImpl> {
         val source = TaskCompletionSource<FirebaseUserImpl>()
-        val body =
-            RequestBody.create(
-                json,
-                JsonObject(
-                    mapOf(
-                        "refresh_token" to JsonPrimitive(user.refreshToken),
-                        "grant_type" to JsonPrimitive("refresh_token"),
-                    ),
-                ).toString(),
-            )
-        val request =
-            Request
-                .Builder()
-                .url(urlFactory.buildUrl("securetoken.googleapis.com/v1/token"))
-                .post(body)
-                .tag(REFRESH_TOKEN_TAG)
-                .build()
+        val body = RequestBody.create(
+            json,
+            JsonObject(
+                mapOf(
+                    "refresh_token" to JsonPrimitive(user.refreshToken),
+                    "grant_type" to JsonPrimitive("refresh_token")
+                )
+            ).toString()
+        )
+        val request = Request
+            .Builder()
+            .url(urlFactory.buildUrl("securetoken.googleapis.com/v1/token"))
+            .post(body)
+            .tag(REFRESH_TOKEN_TAG)
+            .build()
 
-        client.newCall(request).enqueue(
-            object : Callback {
-                override fun onFailure(
-                    call: Call,
-                    e: IOException,
-                ) {
-                    source.setException(e)
-                }
+        client.newCall(request).enqueue(object : Callback {
 
+            override fun onFailure(call: Call, e: IOException) {
+                source.setException(FirebaseException(e.toString(), e))
+            }
                 @Throws(IOException::class)
                 override fun onResponse(
                     call: Call,
