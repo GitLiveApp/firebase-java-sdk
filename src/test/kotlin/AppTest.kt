@@ -14,7 +14,7 @@ class AppTest : FirebaseTest() {
 
                 override fun store(
                     key: String,
-                    value: String,
+                    value: String
                 ) = storage.set(key, value)
 
                 override fun retrieve(key: String) = storage[key]
@@ -24,7 +24,7 @@ class AppTest : FirebaseTest() {
                 }
 
                 override fun log(msg: String) = println(msg)
-            },
+            }
         )
         val options =
             FirebaseOptions

@@ -6,13 +6,13 @@ import android.os.Parcelable
 
 class UserProfileChangeRequest private constructor(
     internal val displayName: String?,
-    internal val photoUrl: String?,
+    internal val photoUrl: String?
 ) : Parcelable {
     override fun describeContents(): Int = displayName.hashCode() + photoUrl.hashCode()
 
     override fun writeToParcel(
         dest: Parcel,
-        flags: Int,
+        flags: Int
     ) {
         dest.writeString(displayName)
         dest.writeString(photoUrl)

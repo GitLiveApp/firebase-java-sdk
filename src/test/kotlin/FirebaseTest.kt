@@ -5,7 +5,6 @@ import com.google.firebase.FirebaseOptions
 import com.google.firebase.FirebasePlatform
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.initialize
-import com.google.firebase.ktx.initialize
 import org.junit.After
 import org.junit.Before
 import java.io.File
@@ -36,7 +35,7 @@ abstract class FirebaseTest {
 
                 override fun store(
                     key: String,
-                    value: String,
+                    value: String
                 ) = storage.set(key, value)
 
                 override fun retrieve(key: String) = storage[key]
@@ -48,7 +47,7 @@ abstract class FirebaseTest {
                 override fun log(msg: String) = println(msg)
 
                 override fun getDatabasePath(name: String) = File("./build/$name")
-            },
+            }
         )
         val options =
             FirebaseOptions

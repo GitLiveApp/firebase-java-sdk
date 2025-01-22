@@ -4,7 +4,7 @@ import java.net.URI
 import java.util.Collections
 
 class Uri(
-    private val uri: URI,
+    private val uri: URI
 ) {
     companion object {
         @JvmStatic

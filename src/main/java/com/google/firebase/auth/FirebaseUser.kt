@@ -15,7 +15,7 @@ abstract class FirebaseUser {
 
     abstract fun verifyBeforeUpdateEmail(
         newEmail: String,
-        actionCodeSettings: ActionCodeSettings?,
+        actionCodeSettings: ActionCodeSettings?
     ): Task<Unit>
 
     abstract fun updateEmail(email: String): Task<Unit>
