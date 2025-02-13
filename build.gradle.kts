@@ -145,74 +145,12 @@ publishing {
     }
 }
 
-/**
- * List of aar files to include in the jar. Some jars are being omitted because they are not needed for the JVM.
- * - lifecycle-*: exclude lifecycle libs due to https://github.com/GitLiveApp/firebase-java-sdk/pull/15 - remove the exclude  once the dependencies in the aars are updated to the required version
- * - savedstate: Excluded due to this library already being included as part of the compose mutliplatform dependencies. It does not seem to be directly needed by the firebase libraries.
- */
-val includeList = listOf(
-    "activity-*.jar",
-    "asynclayoutinflater-*.jar",
-    "coordinatorlayout-*.jar",
-    "core-*.jar",
-    "core-runtime-*.jar",
-    "cursoradapter-*.jar",
-    "customview-*.jar",
-    "documentfile-*.jar",
-    "drawerlayout-*.jar",
-    "firebase-abt-*.jar",
-    "firebase-appcheck-*.jar",
-    "firebase-appcheck-interop-*.jar",
-    "firebase-auth-interop-*.jar",
-    "firebase-common-*.jar",
-    "firebase-common-*.jar",
-    "firebase-common-ktx-*.jar",
-    "firebase-common-ktx-*.jar",
-    "firebase-components-*.jar",
-    "firebase-components-*.jar",
-    "firebase-config-*.jar",
-    "firebase-config-interop-*.jar",
-    "firebase-database-*.jar",
-    "firebase-database-collection-*.jar",
-    "firebase-encoders-json-*.jar",
-    "firebase-firestore-*.jar",
-    "firebase-functions-*.jar",
-    "firebase-iid-*.jar",
-    "firebase-iid-interop-*.jar",
-    "firebase-installations-*.jar",
-    "firebase-installations-interop-*.jar",
-    "firebase-measurement-connector-*.jar",
-    "firebase-storage-*.jar",
-    "fragment-*.jar",
-    "fragment-*.jar",
-    "grpc-android-*.jar",
-    "interpolator-*.jar",
-    "legacy-support-core-ui-*.jar",
-    "legacy-support-core-utils-*.jar",
-    "loader-*.jar",
-    "localbroadcastmanager-*.jar",
-    "play-services-base-*.jar",
-    "play-services-basement-*.jar",
-    "play-services-basement-*.jar",
-    "play-services-cloud-messaging-*.jar",
-    "play-services-stats-*.jar",
-    "play-services-tasks-*.jar",
-    "play-services-tasks-*.jar",
-    "print-*.jar",
-    "protolite-well-known-types-*.jar",
-    "slidingpanelayout-*.jar",
-    "swiperefreshlayout-*.jar",
-    "versionedparcelable-*.jar",
-    "viewpager-*.jar"
-)
-
 dependencies {
     compileOnly(libs.robolectric.android.all)
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.play.services)
     testImplementation(libs.kotlinx.coroutines.swing)
     testImplementation(libs.kotlinx.coroutines.test)
-    testImplementation(libs.mockito.core)
     // firebase aars
     aar(platform(libs.google.firebase.bom))
     aar(libs.google.firebase.firestore)
@@ -222,7 +160,7 @@ dependencies {
     aar(libs.google.firebase.installations)
     aar(libs.google.firebase.storage)
     // extracted aar dependencies
-    api(fileTree(mapOf("dir" to "build/jar", "include" to includeList)))
+    api(fileTree(mapOf("dir" to "build/jar", "include" to listOf("*.jar"), "exclude" to listOf("lifecycle-*"))))
     // polyfill dependencies
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.serialization.core)
