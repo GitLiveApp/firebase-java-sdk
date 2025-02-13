@@ -149,7 +149,7 @@ class Uri(private val uri: URI) {
         }
 
         fun appendPath(newSegment: String?): Builder {
-           val createdPath = Paths.get(this.path.orEmpty(), newSegment).toString()
+            val createdPath = Paths.get(this.path.orEmpty(), newSegment).toString()
             return this.path(createdPath)
         }
 
@@ -215,7 +215,6 @@ class Uri(private val uri: URI) {
             return this.build().toString()
         }
     }
-
 }
 
 /** Index of a component which was not found.  */
