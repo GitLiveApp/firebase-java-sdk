@@ -39,6 +39,7 @@ public class PackageManager {
                 data.put("com.google.firebase.components:com.google.firebase.functions.FunctionsRegistrar", "com.google.firebase.components.ComponentRegistrar");
                 data.put("com.google.firebase.components:com.google.firebase.installations.FirebaseInstallationsRegistrar", "com.google.firebase.components.ComponentRegistrar");
                 data.put("com.google.firebase.components:com.google.firebase.iid.Registrar", "com.google.firebase.components.ComponentRegistrar");
+                data.put("com.google.firebase.components:com.google.firebase.storage.StorageRegistrar", "com.google.firebase.components.ComponentRegistrar");
                 return new ServiceInfo(data);
         }
         throw new IllegalArgumentException(component.cls);
