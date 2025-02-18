@@ -29,34 +29,21 @@ import java.util.*
 import kotlin.concurrent.Volatile
 
 /**
- * Immutable URI reference. A URI reference includes a URI and a fragment, the
- * component of the URI following a '#'. Builds and parses URI references
- * which conform to
- * [RFC 2396](http://www.faqs.org/rfcs/rfc2396.html).
+ * Immutable URI reference. A URI reference includes a URI and a fragment, the component of the URI following a '#'.
+ * Builds and parses URI references which conform to [RFC 2396](http://www.faqs.org/rfcs/rfc2396.html).
  *
- *
- * In the interest of performance, this class performs little to no
- * validation. Behavior is undefined for invalid input. This class is very
- * forgiving--in the face of invalid input, it will return garbage
- * rather than throw an exception unless otherwise specified.
+ * In the interest of performance, this class performs little to no validation. Behavior is undefined for invalid input.
+ * This class is very forgiving--in the face of invalid input, it will return garbage rather than throw an exception
+ * unless otherwise specified.
  */
-abstract class Uri
-/**
- * Prevents external subclassing.
- */
-private constructor() : Parcelable, Comparable<Uri> {
+abstract class Uri private constructor() : Parcelable, Comparable<Uri> {
     /**
+     * Holds a placeholder for strings which haven't been cached. This enables us to cache null. We intentionally create
+     * a new String instance so we can compare its identity and there is no chance we will confuse it with user data.
      *
-     * Holds a placeholder for strings which haven't been cached. This enables us
-     * to cache null. We intentionally create a new String instance so we can
-     * compare its identity and there is no chance we will confuse it with
-     * user data.
-     *
-     * NOTE This value is held in its own Holder class is so that referring to
-     * [NotCachedHolder.NOT_CACHED] does not trigger `Uri.<clinit>`.
-     * For example, `PathPart.<init>` uses `NotCachedHolder.NOT_CACHED`
-     * but must not trigger `Uri.<clinit>`: Otherwise, the initialization of
-     * `Uri.EMPTY` would see a `null` value for `PathPart.EMPTY`!
+     * NOTE This value is held in its own Holder class is so that referring to [NotCachedHolder.NOT_CACHED] does not
+     * trigger `Uri.<clinit>`. For example, `PathPart.<init>` uses `NotCachedHolder.NOT_CACHED` but must not trigger
+     * `Uri.<clinit>`: Otherwise, the initialization of `Uri.EMPTY` would see a `null` value for `PathPart.EMPTY`!
      *
      * @hide
      */
@@ -65,34 +52,31 @@ private constructor() : Parcelable, Comparable<Uri> {
     }
 
     /**
-     * Returns true if this URI is hierarchical like "http://google.com".
-     * Absolute URIs are hierarchical if the scheme-specific part starts with
-     * a '/'. Relative URIs are always hierarchical.
+     * Returns true if this URI is hierarchical like "http://google.com". Absolute URIs are hierarchical if the
+     * scheme-specific part starts with a '/'. Relative URIs are always hierarchical.
      */
     abstract val isHierarchical: Boolean
 
+    /**
+     * Returns true if this URI is opaque like "mailto:nobody@google.com". The scheme-specific part of an opaque URI
+     * cannot start with a '/'.
+     */
     val isOpaque: Boolean
-        /**
-         * Returns true if this URI is opaque like "mailto:nobody@google.com". The
-         * scheme-specific part of an opaque URI cannot start with a '/'.
-         */
         get() = !isHierarchical
 
     /**
-     * Returns true if this URI is relative, i.e.&nbsp;if it doesn't contain an
-     * explicit scheme.
+     * Returns true if this URI is relative, i.e.&nbsp;if it doesn't contain an explicit scheme.
      *
      * @return true if this URI is relative, false if it's absolute
      */
     abstract val isRelative: Boolean
 
+    /**
+     * Returns true if this URI is absolute, i.e.&nbsp;if it contains an explicit scheme.
+     *
+     * @return true if this URI is absolute, false if it's relative
+     */
     val isAbsolute: Boolean
-        /**
-         * Returns true if this URI is absolute, i.e.&nbsp;if it contains an
-         * explicit scheme.
-         *
-         * @return true if this URI is absolute, false if it's relative
-         */
         get() = !isRelative
 
     /**
@@ -103,10 +87,8 @@ private constructor() : Parcelable, Comparable<Uri> {
     abstract val scheme: String?
 
     /**
-     * Gets the scheme-specific part of this URI, i.e.&nbsp;everything between
-     * the scheme separator ':' and the fragment separator '#'. If this is a
-     * relative URI, this method returns the entire URI. Decodes escaped octets.
-     *
+     * Gets the scheme-specific part of this URI, i.e.&nbsp;everything between the scheme separator ':' and the fragment
+     * separator '#'. If this is a relative URI, this method returns the entire URI. Decodes escaped octets.
      *
      * Example: "//www.google.com/search?q=android"
      *
@@ -115,11 +97,8 @@ private constructor() : Parcelable, Comparable<Uri> {
     abstract val schemeSpecificPart: String?
 
     /**
-     * Gets the scheme-specific part of this URI, i.e.&nbsp;everything between
-     * the scheme separator ':' and the fragment separator '#'. If this is a
-     * relative URI, this method returns the entire URI. Leaves escaped octets
-     * intact.
-     *
+     * Gets the scheme-specific part of this URI, i.e.&nbsp;everything between the scheme separator ':' and the fragment
+     * separator '#'. If this is a relative URI, this method returns the entire URI. Leaves escaped octets intact.
      *
      * Example: "//www.google.com/search?q=android"
      *
@@ -128,10 +107,8 @@ private constructor() : Parcelable, Comparable<Uri> {
     abstract val encodedSchemeSpecificPart: String?
 
     /**
-     * Gets the decoded authority part of this URI. For
-     * server addresses, the authority is structured as follows:
-     * `[ userinfo '@' ] host [ ':' port ]`
-     *
+     * Gets the decoded authority part of this URI. For server addresses, the authority is structured as follows: `[
+     * userinfo '@' ] host [ ':' port ]`
      *
      * Examples: "google.com", "bob@google.com:80"
      *
@@ -140,10 +117,8 @@ private constructor() : Parcelable, Comparable<Uri> {
     abstract val authority: String?
 
     /**
-     * Gets the encoded authority part of this URI. For
-     * server addresses, the authority is structured as follows:
-     * `[ userinfo '@' ] host [ ':' port ]`
-     *
+     * Gets the encoded authority part of this URI. For server addresses, the authority is structured as follows: `[
+     * userinfo '@' ] host [ ':' port ]`
      *
      * Examples: "google.com", "bob@google.com:80"
      *
@@ -152,35 +127,32 @@ private constructor() : Parcelable, Comparable<Uri> {
     abstract val encodedAuthority: String?
 
     /**
-     * Gets the decoded user information from the authority.
-     * For example, if the authority is "nobody@google.com", this method will
-     * return "nobody".
+     * Gets the decoded user information from the authority. For example, if the authority is "nobody@google.com", this
+     * method will return "nobody".
      *
      * @return the user info for this URI or null if not present
      */
     abstract val userInfo: String?
 
     /**
-     * Gets the encoded user information from the authority.
-     * For example, if the authority is "nobody@google.com", this method will
-     * return "nobody".
+     * Gets the encoded user information from the authority. For example, if the authority is "nobody@google.com", this
+     * method will return "nobody".
      *
      * @return the user info for this URI or null if not present
      */
     abstract val encodedUserInfo: String?
 
     /**
-     * Gets the encoded host from the authority for this URI. For example,
-     * if the authority is "bob@google.com", this method will return
-     * "google.com".
+     * Gets the encoded host from the authority for this URI. For example, if the authority is "bob@google.com", this
+     * method will return "google.com".
      *
      * @return the host for this URI or null if not present
      */
     abstract val host: String?
 
     /**
-     * Gets the port from the authority for this URI. For example,
-     * if the authority is "google.com:80", this method will return 80.
+     * Gets the port from the authority for this URI. For example, if the authority is "google.com:80", this method will
+     * return 80.
      *
      * @return the port for this URI or -1 if invalid or not present
      */
@@ -189,34 +161,30 @@ private constructor() : Parcelable, Comparable<Uri> {
     /**
      * Gets the decoded path.
      *
-     * @return the decoded path, or null if this is not a hierarchical URI
-     * (like "mailto:nobody@google.com") or the URI is invalid
+     * @return the decoded path, or null if this is not a hierarchical URI (like "mailto:nobody@google.com") or the URI
+     *   is invalid
      */
     abstract val path: String?
 
     /**
      * Gets the encoded path.
      *
-     * @return the encoded path, or null if this is not a hierarchical URI
-     * (like "mailto:nobody@google.com") or the URI is invalid
+     * @return the encoded path, or null if this is not a hierarchical URI (like "mailto:nobody@google.com") or the URI
+     *   is invalid
      */
     abstract val encodedPath: String?
 
     /**
-     * Gets the decoded query component from this URI. The query comes after
-     * the query separator ('?') and before the fragment separator ('#'). This
-     * method would return "q=android" for
-     * "http://www.google.com/search?q=android".
+     * Gets the decoded query component from this URI. The query comes after the query separator ('?') and before the
+     * fragment separator ('#'). This method would return "q=android" for "http://www.google.com/search?q=android".
      *
      * @return the decoded query or null if there isn't one
      */
     abstract val query: String?
 
     /**
-     * Gets the encoded query component from this URI. The query comes after
-     * the query separator ('?') and before the fragment separator ('#'). This
-     * method would return "q=android" for
-     * "http://www.google.com/search?q=android".
+     * Gets the encoded query component from this URI. The query comes after the query separator ('?') and before the
+     * fragment separator ('#'). This method would return "q=android" for "http://www.google.com/search?q=android".
      *
      * @return the encoded query or null if there isn't one
      */
@@ -251,11 +219,9 @@ private constructor() : Parcelable, Comparable<Uri> {
     abstract val lastPathSegment: String?
 
     /**
-     * Compares this Uri to another object for equality. Returns true if the
-     * encoded string representations of this Uri and the given Uri are
-     * equal. Case counts. Paths are not normalized. If one Uri specifies a
-     * default port explicitly and the other leaves it implicit, they will not
-     * be considered equal.
+     * Compares this Uri to another object for equality. Returns true if the encoded string representations of this Uri
+     * and the given Uri are equal. Case counts. Paths are not normalized. If one Uri specifies a default port
+     * explicitly and the other leaves it implicit, they will not be considered equal.
      */
     override fun equals(other: Any?): Boolean {
         if (other !is Uri) {
@@ -265,34 +231,25 @@ private constructor() : Parcelable, Comparable<Uri> {
         return toString() == other.toString()
     }
 
-    /**
-     * Hashes the encoded string represention of this Uri consistently with
-     * [.equals].
-     */
+    /** Hashes the encoded string represention of this Uri consistently with [.equals]. */
     override fun hashCode(): Int {
         return toString().hashCode()
     }
 
-    /**
-     * Compares the string representation of this Uri with that of
-     * another.
-     */
+    /** Compares the string representation of this Uri with that of another. */
     override fun compareTo(other: Uri): Int {
         return toString().compareTo(other.toString())
     }
 
-    /**
-     * Returns the encoded string representation of this URI.
-     * Example: "http://google.com/"
-     */
+    /** Returns the encoded string representation of this URI. Example: "http://google.com/" */
     abstract override fun toString(): String
 
     /**
-     * Return a string representation of this URI that has common forms of PII redacted,
-     * making it safer to use for logging purposes.  For example, `tel:800-466-4411` is
-     * returned as `tel:xxx-xxx-xxxx` and `http://example.com/path/to/item/` is
-     * returned as `http://example.com/...`. For all other uri schemes, only the scheme,
-     * host and port are returned.
+     * Return a string representation of this URI that has common forms of PII redacted, making it safer to use for
+     * logging purposes. For example, `tel:800-466-4411` is returned as `tel:xxx-xxx-xxxx` and
+     * `http://example.com/path/to/item/` is returned as `http://example.com/...`. For all other uri schemes, only the
+     * scheme, host and port are returned.
+     *
      * @return the common forms PII redacted string of this URI
      * @hide
      */
@@ -305,15 +262,17 @@ private constructor() : Parcelable, Comparable<Uri> {
         if (scheme != null) {
             builder.append(scheme)
             builder.append(":")
-            if (scheme.equals("tel", ignoreCase = true) || scheme.equals(
-                    "sip", ignoreCase = true
-                ) || scheme.equals("sms", ignoreCase = true) || scheme.equals(
-                    "smsto", ignoreCase = true
-                ) || scheme.equals("mailto", ignoreCase = true) || scheme.equals("nfc", ignoreCase = true)
+            if (
+                scheme.equals("tel", ignoreCase = true) ||
+                scheme.equals("sip", ignoreCase = true) ||
+                scheme.equals("sms", ignoreCase = true) ||
+                scheme.equals("smsto", ignoreCase = true) ||
+                scheme.equals("mailto", ignoreCase = true) ||
+                scheme.equals("nfc", ignoreCase = true)
             ) {
                 if (ssp != null) {
-                    for (i in 0..<ssp.length) {
-                        val c = ssp[i]
+                    for (element in ssp) {
+                        val c = element
                         if (c == '-' || c == '@' || c == '.') {
                             builder.append(c)
                         } else {
@@ -338,18 +297,15 @@ private constructor() : Parcelable, Comparable<Uri> {
         return builder.toString()
     }
 
-    /**
-     * Constructs a new builder, copying the attributes from this Uri.
-     */
+    /** Constructs a new builder, copying the attributes from this Uri. */
     abstract fun buildUpon(): Builder
 
     /**
-     * An implementation which wraps a String URI. This URI can be opaque or
-     * hierarchical, but we extend AbstractHierarchicalUri in case we need
-     * the hierarchical functionality.
+     * An implementation which wraps a String URI. This URI can be opaque or hierarchical, but we extend
+     * AbstractHierarchicalUri in case we need the hierarchical functionality.
      */
     private class StringUri(uriString: String?) : AbstractHierarchicalUri() {
-        /** URI string representation.  */
+        /** URI string representation. */
         private val uriString: String
 
         override fun describeContents(): Int {
@@ -361,28 +317,26 @@ private constructor() : Parcelable, Comparable<Uri> {
             parcel.writeString8(uriString)
         }
 
-        /** Cached scheme separator index.  */
+        /** Cached scheme separator index. */
         @Volatile
         private var cachedSsi = NOT_CALCULATED
 
-        /** Finds the first ':'. Returns -1 if none found.  */
+        /** Finds the first ':'. Returns -1 if none found. */
         fun findSchemeSeparator(): Int {
-            return if (cachedSsi == NOT_CALCULATED) uriString.indexOf(':').also {
-                cachedSsi = it
-            }
-            else cachedSsi
+            return if (cachedSsi == NOT_CALCULATED) uriString.indexOf(':').also { cachedSsi = it } else cachedSsi
         }
 
-        /** Cached fragment separator index.  */
+        /** Cached fragment separator index. */
         @Volatile
         private var cachedFsi = NOT_CALCULATED
 
-        /** Finds the first '#'. Returns -1 if none found.  */
+        /** Finds the first '#'. Returns -1 if none found. */
         fun findFragmentSeparator(): Int {
-            return if (cachedFsi == NOT_CALCULATED) uriString.indexOf('#', findSchemeSeparator()).also {
-                cachedFsi = it
+            return if (cachedFsi == NOT_CALCULATED) {
+                uriString.indexOf('#', findSchemeSeparator()).also { cachedFsi = it }
+            } else {
+                cachedFsi
             }
-            else cachedFsi
         }
 
         override val isHierarchical: Boolean
@@ -437,8 +391,7 @@ private constructor() : Parcelable, Comparable<Uri> {
             val fsi = findFragmentSeparator()
 
             // Return everything between ssi and fsi.
-            return if (fsi == NOT_FOUND) uriString.substring(ssi + 1)
-            else uriString.substring(ssi + 1, fsi)
+            return if (fsi == NOT_FOUND) uriString.substring(ssi + 1) else uriString.substring(ssi + 1, fsi)
         }
 
         private var _authorityPart: Part? = null
@@ -446,9 +399,7 @@ private constructor() : Parcelable, Comparable<Uri> {
         val authorityPart: Part
             get() {
                 if (_authorityPart == null) {
-                    val encodedAuthority = parseAuthority(
-                        this.uriString, findSchemeSeparator()
-                    )
+                    val encodedAuthority = parseAuthority(this.uriString, findSchemeSeparator())
                     return Part.fromEncoded(encodedAuthority).also { _authorityPart = it }
                 }
 
@@ -464,10 +415,7 @@ private constructor() : Parcelable, Comparable<Uri> {
         private var _pathPart: PathPart? = null
 
         val pathPart: PathPart
-            get() = if (_pathPart == null) PathPart.fromEncoded(parsePath()).also {
-                _pathPart = it
-            }
-            else _pathPart!!
+            get() = if (_pathPart == null) PathPart.fromEncoded(parsePath()).also { _pathPart = it } else _pathPart!!
 
         override val path: String?
             get() = pathPart.decoded
@@ -506,10 +454,7 @@ private constructor() : Parcelable, Comparable<Uri> {
         private var _queryPart: Part? = null
 
         val queryPart: Part
-            get() = if (_queryPart == null) Part.fromEncoded(parseQuery()).also {
-                _queryPart = it
-            }
-            else _queryPart!!
+            get() = if (_queryPart == null) Part.fromEncoded(parseQuery()).also { _queryPart = it } else _queryPart!!
 
         override val encodedQuery: String?
             get() = queryPart.encoded
@@ -550,10 +495,12 @@ private constructor() : Parcelable, Comparable<Uri> {
         }
 
         val fragmentPart: Part
-            get() = if (_fragmentPart == null) Part.fromEncoded(parseFragment()).also {
-                _fragmentPart = it
-            }
-            else _fragmentPart!!
+            get() =
+                if (_fragmentPart == null) {
+                    Part.fromEncoded(parseFragment()).also { _fragmentPart = it }
+                } else {
+                    _fragmentPart!!
+                }
 
         override val encodedFragment: String?
             get() = fragmentPart.encoded
@@ -579,7 +526,7 @@ private constructor() : Parcelable, Comparable<Uri> {
         }
 
         companion object {
-            /** Used in parcelling.  */
+            /** Used in parcelling. */
             const val TYPE_ID: Int = 1
 
             @JvmStatic
@@ -592,7 +539,6 @@ private constructor() : Parcelable, Comparable<Uri> {
              *
              * @param uriString URI string
              * @param ssi scheme separator index, -1 for a relative URI
-             *
              * @return the authority or null if none is found
              */
             @JvmStatic
@@ -607,9 +553,12 @@ private constructor() : Parcelable, Comparable<Uri> {
                     // end of the string.
 
                     var end = ssi + 3
-                    LOOP@ while (end < length) {
+                    while (end < length) {
                         when (uriString[end]) {
-                            '/', '\\', '?', '#' -> break@LOOP
+                            '/',
+                            '\\',
+                            '?',
+                            '#' -> break
                         }
                         end++
                     }
@@ -625,7 +574,6 @@ private constructor() : Parcelable, Comparable<Uri> {
              *
              * @param uriString URI string
              * @param ssi scheme separator index, -1 for a relative URI
-             *
              * @return the path
              */
             @JvmStatic
@@ -637,13 +585,15 @@ private constructor() : Parcelable, Comparable<Uri> {
                 if (length > ssi + 2 && uriString[ssi + 1] == '/' && uriString[ssi + 2] == '/') {
                     // Skip over authority to path.
                     pathStart = ssi + 3
-                    LOOP@ while (pathStart < length) {
+                    while (pathStart < length) {
                         when (uriString[pathStart]) {
-                            '?', '#' -> return "" // Empty path.
-                            '/', '\\' ->                             // Per http://url.spec.whatwg.org/#host-state, the \ character
+                            '?',
+                            '#' -> return "" // Empty path.
+                            '/',
+                            '\\' -> // Per http://url.spec.whatwg.org/#host-state, the \ character
                                 // is treated as if it were a / character when encountered in a
                                 // host
-                                break@LOOP
+                                break
                         }
                         pathStart++
                     }
@@ -654,9 +604,10 @@ private constructor() : Parcelable, Comparable<Uri> {
 
                 // Find end of path.
                 var pathEnd = pathStart
-                LOOP@ while (pathEnd < length) {
+                while (pathEnd < length) {
                     when (uriString[pathEnd]) {
-                        '?', '#' -> break@LOOP
+                        '?',
+                        '#' -> break
                     }
                     pathEnd++
                 }
@@ -666,9 +617,7 @@ private constructor() : Parcelable, Comparable<Uri> {
         }
     }
 
-    /**
-     * Opaque URI.
-     */
+    /** Opaque URI. */
     private class OpaqueUri(override val scheme: String?, private val ssp: Part, fragment: Part?) : Uri() {
         private val _fragment: Part = fragment ?: Part.NULL
 
@@ -761,23 +710,20 @@ private constructor() : Parcelable, Comparable<Uri> {
         }
 
         companion object {
-            /** Used in parcelling.  */
+            /** Used in parcelling. */
             const val TYPE_ID: Int = 2
 
             @JvmStatic
             fun readFrom(parcel: Parcel): Uri {
                 val stringUri = StringUri(parcel.readString8())
-                return OpaqueUri(
-                    stringUri.parseScheme(), stringUri.ssp!!, stringUri.fragmentPart
-                )
+                return OpaqueUri(stringUri.parseScheme(), stringUri.ssp!!, stringUri.fragmentPart)
             }
         }
     }
 
-    /**
-     * Wrapper for path segment array.
-     */
-    class PathSegments(val segments: Array<String?>?, override val size: Int) : AbstractList<String?>(), RandomAccess {
+    /** Wrapper for path segment array. */
+    class PathSegments(private val segments: Array<String?>?, override val size: Int) :
+        AbstractList<String?>(), RandomAccess {
         override fun get(index: Int): String? {
             if (index >= size) {
                 throw IndexOutOfBoundsException()
@@ -791,11 +737,9 @@ private constructor() : Parcelable, Comparable<Uri> {
         }
     }
 
-    /**
-     * Builds PathSegments.
-     */
+    /** Builds PathSegments. */
     internal class PathSegmentsBuilder {
-        var segments: Array<String?>? = null
+        private var segments: Array<String?>? = null
         var size: Int = 0
 
         fun add(segment: String?) {
@@ -824,9 +768,7 @@ private constructor() : Parcelable, Comparable<Uri> {
         }
     }
 
-    /**
-     * Support for hierarchical URIs.
-     */
+    /** Support for hierarchical URIs. */
     private abstract class AbstractHierarchicalUri : Uri() {
         override val lastPathSegment: String?
             get() {
@@ -844,10 +786,12 @@ private constructor() : Parcelable, Comparable<Uri> {
         private var _userInfoPart: Part? = null
 
         val userInfoPart: Part
-            get() = if (_userInfoPart == null) Part.fromEncoded(parseUserInfo()).also {
-                _userInfoPart = it
-            }
-            else _userInfoPart!!
+            get() =
+                if (_userInfoPart == null) {
+                    Part.fromEncoded(parseUserInfo()).also { _userInfoPart = it }
+                } else {
+                    _userInfoPart!!
+                }
 
         override val encodedUserInfo: String?
             get() = userInfoPart.encoded
@@ -876,18 +820,19 @@ private constructor() : Parcelable, Comparable<Uri> {
             val userInfoSeparator = authority.lastIndexOf('@')
             val portSeparator = findPortSeparator(authority)
 
-            val encodedHost = if (portSeparator == NOT_FOUND) authority.substring(userInfoSeparator + 1)
-            else authority.substring(userInfoSeparator + 1, portSeparator)
+            val encodedHost =
+                if (portSeparator == NOT_FOUND) {
+                    authority.substring(userInfoSeparator + 1)
+                } else {
+                    authority.substring(userInfoSeparator + 1, portSeparator)
+                }
 
             return decode(encodedHost)
         }
 
         @Volatile
         override var port: Int = NOT_CALCULATED
-            get() = if (field == NOT_CALCULATED) parsePort().also {
-                field = it
-            }
-            else field
+            get() = if (field == NOT_CALCULATED) parsePort().also { field = it } else field
 
         fun parsePort(): Int {
             val authority = encodedAuthority
@@ -924,11 +869,13 @@ private constructor() : Parcelable, Comparable<Uri> {
         }
     }
 
-    /**
-     * Hierarchical Uri.
-     */
-    private class HierarchicalUri(// can be null
-        override val scheme: String?, authority: Part?, path: PathPart, query: Part?, fragment: Part?
+    /** Hierarchical Uri. */
+    private class HierarchicalUri( // can be null
+        override val scheme: String?,
+        authority: Part?,
+        path: PathPart,
+        query: Part?,
+        fragment: Part?
     ) : AbstractHierarchicalUri() {
         private val _authority: Part = Part.nonNull(authority)
         private val _path: PathPart = generatePath(path)
@@ -962,10 +909,7 @@ private constructor() : Parcelable, Comparable<Uri> {
             get() = scheme == null
 
         var ssp: Part? = null
-            get() = if (field == null) Part.fromEncoded(makeSchemeSpecificPart()).also {
-                field = it
-            }
-            else field
+            get() = if (field == null) Part.fromEncoded(makeSchemeSpecificPart()).also { field = it } else field
             private set
 
         override val encodedSchemeSpecificPart: String?
@@ -974,9 +918,7 @@ private constructor() : Parcelable, Comparable<Uri> {
         override val schemeSpecificPart: String?
             get() = ssp!!.decoded
 
-        /**
-         * Creates the encoded scheme-specific part from its sub parts.
-         */
+        /** Creates the encoded scheme-specific part from its sub parts. */
         fun makeSchemeSpecificPart(): String {
             val builder = StringBuilder()
             appendSspTo(builder)
@@ -1030,11 +972,9 @@ private constructor() : Parcelable, Comparable<Uri> {
         @Volatile
         private var uriString = NotCachedHolder.NOT_CACHED
 
-
         override fun toString(): String {
             val cached = (uriString !== NotCachedHolder.NOT_CACHED)
-            return if (cached) uriString
-            else (makeUriString().also { uriString = it })
+            return if (cached) uriString else (makeUriString().also { uriString = it })
         }
 
         fun makeUriString(): String {
@@ -1058,7 +998,7 @@ private constructor() : Parcelable, Comparable<Uri> {
         }
 
         companion object {
-            /** Used in parcelling.  */
+            /** Used in parcelling. */
             const val TYPE_ID: Int = 3
 
             @JvmStatic
@@ -1076,30 +1016,19 @@ private constructor() : Parcelable, Comparable<Uri> {
     }
 
     /**
-     * Helper class for building or manipulating URI references. Not safe for
-     * concurrent use.
+     * Helper class for building or manipulating URI references. Not safe for concurrent use.
      *
+     * An absolute hierarchical URI reference follows the pattern: `<scheme>://<authority><absolute
+     * path>?<query>#<fragment>`
      *
-     * An absolute hierarchical URI reference follows the pattern:
-     * `<scheme>://<authority><absolute path>?<query>#<fragment>`
+     * Relative URI references (which are always hierarchical) follow one of two patterns: `<relative or absolute
+     * path>?<query>#<fragment>` or `//<authority><absolute path>?<query>#<fragment>`
      *
-     *
-     * Relative URI references (which are always hierarchical) follow one
-     * of two patterns: `<relative or absolute path>?<query>#<fragment>`
-     * or `//<authority><absolute path>?<query>#<fragment>`
-     *
-     *
-     * An opaque URI follows this pattern:
-     * `<scheme>:<opaque part>#<fragment>`
-     *
+     * An opaque URI follows this pattern: `<scheme>:<opaque part>#<fragment>`
      *
      * Use [Uri.buildUpon] to obtain a builder representing an existing URI.
      */
-    class Builder
-    /**
-     * Constructs a new Builder.
-     */
-    {
+    class Builder {
         private var scheme: String? = null
         private var opaquePart: Part? = null
         private var authority: Part? = null
@@ -1152,16 +1081,12 @@ private constructor() : Parcelable, Comparable<Uri> {
             return this
         }
 
-        /**
-         * Encodes and sets the authority.
-         */
+        /** Encodes and sets the authority. */
         fun authority(authority: String?): Builder {
             return authority(Part.fromDecoded(authority))
         }
 
-        /**
-         * Sets the previously encoded authority.
-         */
+        /** Sets the previously encoded authority. */
         fun encodedAuthority(authority: String?): Builder {
             return authority(Part.fromEncoded(authority))
         }
@@ -1175,13 +1100,10 @@ private constructor() : Parcelable, Comparable<Uri> {
         }
 
         /**
-         * Sets the path. Leaves '/' characters intact but encodes others as
-         * necessary.
+         * Sets the path. Leaves '/' characters intact but encodes others as necessary.
          *
-         *
-         * If the path is not null and doesn't start with a '/', and if
-         * you specify a scheme and/or authority, the builder will prepend the
-         * given path with a '/'.
+         * If the path is not null and doesn't start with a '/', and if you specify a scheme and/or authority, the
+         * builder will prepend the given path with a '/'.
          */
         fun path(path: String?): Builder {
             return path(PathPart.fromDecoded(path))
@@ -1190,25 +1112,19 @@ private constructor() : Parcelable, Comparable<Uri> {
         /**
          * Sets the previously encoded path.
          *
-         *
-         * If the path is not null and doesn't start with a '/', and if
-         * you specify a scheme and/or authority, the builder will prepend the
-         * given path with a '/'.
+         * If the path is not null and doesn't start with a '/', and if you specify a scheme and/or authority, the
+         * builder will prepend the given path with a '/'.
          */
         fun encodedPath(path: String?): Builder {
             return path(PathPart.fromEncoded(path))
         }
 
-        /**
-         * Encodes the given segment and appends it to the path.
-         */
+        /** Encodes the given segment and appends it to the path. */
         fun appendPath(newSegment: String?): Builder {
             return path(PathPart.appendDecodedSegment(path, newSegment))
         }
 
-        /**
-         * Appends the given segment to the path.
-         */
+        /** Appends the given segment to the path. */
         fun appendEncodedPath(newSegment: String?): Builder {
             return path(PathPart.appendEncodedSegment(path, newSegment))
         }
@@ -1221,16 +1137,12 @@ private constructor() : Parcelable, Comparable<Uri> {
             return this
         }
 
-        /**
-         * Encodes and sets the query.
-         */
+        /** Encodes and sets the query. */
         fun query(query: String?): Builder {
             return query(Part.fromDecoded(query))
         }
 
-        /**
-         * Sets the previously encoded query.
-         */
+        /** Sets the previously encoded query. */
         fun encodedQuery(query: String?): Builder {
             return query(Part.fromEncoded(query))
         }
@@ -1240,23 +1152,18 @@ private constructor() : Parcelable, Comparable<Uri> {
             return this
         }
 
-        /**
-         * Encodes and sets the fragment.
-         */
+        /** Encodes and sets the fragment. */
         fun fragment(fragment: String?): Builder {
             return fragment(Part.fromDecoded(fragment))
         }
 
-        /**
-         * Sets the previously encoded fragment.
-         */
+        /** Sets the previously encoded fragment. */
         fun encodedFragment(fragment: String?): Builder {
             return fragment(Part.fromEncoded(fragment))
         }
 
         /**
-         * Encodes the key and value and then appends the parameter to the
-         * query string.
+         * Encodes the key and value and then appends the parameter to the query string.
          *
          * @param key which will be encoded
          * @param value which will be encoded
@@ -1273,18 +1180,17 @@ private constructor() : Parcelable, Comparable<Uri> {
             }
 
             val oldQuery = query!!.encoded
-            query = if (oldQuery == null || oldQuery.length == 0) {
-                Part.fromEncoded(encodedParameter)
-            } else {
-                Part.fromEncoded("$oldQuery&$encodedParameter")
-            }
+            query =
+                if (oldQuery.isNullOrEmpty()) {
+                    Part.fromEncoded(encodedParameter)
+                } else {
+                    Part.fromEncoded("$oldQuery&$encodedParameter")
+                }
 
             return this
         }
 
-        /**
-         * Clears the the previously set query.
-         */
+        /** Clears the the previously set query. */
         fun clearQuery(): Builder {
             return query(null as Part?)
         }
@@ -1292,15 +1198,12 @@ private constructor() : Parcelable, Comparable<Uri> {
         /**
          * Constructs a Uri with the current attributes.
          *
-         * @throws UnsupportedOperationException if the URI is opaque and the
-         * scheme is null
+         * @throws UnsupportedOperationException if the URI is opaque and the scheme is null
          */
         fun build(): Uri {
             if (opaquePart != null) {
                 if (this.scheme == null) {
-                    throw UnsupportedOperationException(
-                        "An opaque URI must have a scheme."
-                    )
+                    throw UnsupportedOperationException("An opaque URI must have a scheme.")
                 }
 
                 return OpaqueUri(scheme, opaquePart!!, fragment)
@@ -1317,9 +1220,7 @@ private constructor() : Parcelable, Comparable<Uri> {
                     }
                 }
 
-                return HierarchicalUri(
-                    scheme, authority, path, query, fragment
-                )
+                return HierarchicalUri(scheme, authority, path, query, fragment)
             }
         }
 
@@ -1332,15 +1233,14 @@ private constructor() : Parcelable, Comparable<Uri> {
         }
     }
 
+    /**
+     * Returns a set of the unique names of all query parameters. Iterating over the set will return the names in
+     * order of their first occurrence.
+     *
+     * @return a set of decoded names
+     * @throws UnsupportedOperationException if this isn't a hierarchical URI
+     */
     val queryParameterNames: Set<String>
-        /**
-         * Returns a set of the unique names of all query parameters. Iterating
-         * over the set will return the names in order of their first occurrence.
-         *
-         * @throws UnsupportedOperationException if this isn't a hierarchical URI
-         *
-         * @return a set of decoded names
-         */
         get() {
             if (isOpaque) {
                 throw UnsupportedOperationException(NOT_HIERARCHICAL)
@@ -1373,10 +1273,9 @@ private constructor() : Parcelable, Comparable<Uri> {
      * Searches the query string for parameter values with the given key.
      *
      * @param key which will be encoded
-     *
+     * @return a list of decoded values
      * @throws UnsupportedOperationException if this isn't a hierarchical URI
      * @throws NullPointerException if key is null
-     * @return a list of decoded values
      */
     fun getQueryParameters(key: String?): List<String> {
         if (isOpaque) {
@@ -1407,9 +1306,8 @@ private constructor() : Parcelable, Comparable<Uri> {
                 separator = end
             }
 
-            if (separator - start == encodedKey.length && query.regionMatches(
-                    start, encodedKey, 0, encodedKey.length
-                )
+            if (
+                separator - start == encodedKey.length && query.regionMatches(start, encodedKey, 0, encodedKey.length)
             ) {
                 if (separator == end) {
                     values.add("")
@@ -1432,14 +1330,12 @@ private constructor() : Parcelable, Comparable<Uri> {
     /**
      * Searches the query string for the first value with the given key.
      *
-     *
-     * **Warning:** Prior to Jelly Bean, this decoded
-     * the '+' character as '+' rather than ' '.
+     * **Warning:** Prior to Jelly Bean, this decoded the '+' character as '+' rather than ' '.
      *
      * @param key which will be encoded
+     * @return the decoded value or null if no parameter is found
      * @throws UnsupportedOperationException if this isn't a hierarchical URI
      * @throws NullPointerException if key is null
-     * @return the decoded value or null if no parameter is found
      */
     fun getQueryParameter(key: String?): String? {
         if (isOpaque) {
@@ -1463,9 +1359,8 @@ private constructor() : Parcelable, Comparable<Uri> {
                 separator = end
             }
 
-            if (separator - start == encodedKey!!.length && query.regionMatches(
-                    start, encodedKey, 0, encodedKey.length
-                )
+            if (
+                separator - start == encodedKey!!.length && query.regionMatches(start, encodedKey, 0, encodedKey.length)
             ) {
                 if (separator == end) {
                     return ""
@@ -1486,9 +1381,8 @@ private constructor() : Parcelable, Comparable<Uri> {
     }
 
     /**
-     * Searches the query string for the first value with the given key and interprets it
-     * as a boolean value. "false" and "0" are interpreted as `false`, everything
-     * else is interpreted as `true`.
+     * Searches the query string for the first value with the given key and interprets it as a boolean value. "false"
+     * and "0" are interpreted as `false`, everything else is interpreted as `true`.
      *
      * @param key which will be decoded
      * @param defaultValue the default value to return if there is no query parameter for key
@@ -1501,24 +1395,17 @@ private constructor() : Parcelable, Comparable<Uri> {
     }
 
     /**
-     * Return an equivalent URI with a lowercase scheme component.
-     * This aligns the Uri with Android best practices for
+     * Return an equivalent URI with a lowercase scheme component. This aligns the Uri with Android best practices for
      * intent filtering.
      *
+     * For example, "HTTP://www.android.com" becomes "http://www.android.com"
      *
-     * For example, "HTTP://www.android.com" becomes
-     * "http://www.android.com"
+     * All URIs received from outside Android (such as user input, or external sources like Bluetooth, NFC, or the
+     * Internet) should be normalized before they are used to create an Intent.
      *
-     *
-     * All URIs received from outside Android (such as user input,
-     * or external sources like Bluetooth, NFC, or the Internet) should
-     * be normalized before they are used to create an Intent.
-     *
-     *
-     * This method does *not* validate bad URIs,
-     * or 'fix' poorly formatted URIs - so do not use it for input validation.
-     * A Uri will always be returned, even if the Uri is badly formatted to
-     * begin with and a scheme component cannot be found.
+     * This method does *not* validate bad URIs, or 'fix' poorly formatted URIs - so do not use it for input validation.
+     * A Uri will always be returned, even if the Uri is badly formatted to begin with and a scheme component cannot be
+     * found.
      *
      * @return normalized Uri (never null)
      */
@@ -1529,13 +1416,10 @@ private constructor() : Parcelable, Comparable<Uri> {
         val lowerScheme = scheme.lowercase()
         if (scheme == lowerScheme) return this // no change
 
-
         return buildUpon().scheme(lowerScheme).build()
     }
 
-    /**
-     * Support for part implementations.
-     */
+    /** Support for part implementations. */
     abstract class AbstractPart(encoded: String?, decoded: String?) {
         @Volatile
         protected var _encoded: String? = null
@@ -1565,8 +1449,8 @@ private constructor() : Parcelable, Comparable<Uri> {
     }
 
     /**
-     * Immutable wrapper of encoded and decoded versions of a URI part. Lazily
-     * creates the encoded or decoded version from the other.
+     * Immutable wrapper of encoded and decoded versions of a URI part. Lazily creates the encoded or decoded version
+     * from the other.
      */
     open class Part private constructor(encoded: String?, decoded: String?) : AbstractPart(encoded, decoded) {
         open val isEmpty: Boolean
@@ -1580,7 +1464,7 @@ private constructor() : Parcelable, Comparable<Uri> {
 
         private class EmptyPart(value: String?) : Part(value, value) {
             init {
-                require(!(value != null && !value.isEmpty())) { "Expected empty value, got: $value" }
+                require(value.isNullOrEmpty()) { "Expected empty value, got: $value" }
                 // Avoid having to re-calculate the non-canonical value.
                 _decoded = value
                 _encoded = _decoded
@@ -1591,15 +1475,13 @@ private constructor() : Parcelable, Comparable<Uri> {
         }
 
         companion object {
-            /** A part with null values.  */
+            /** A part with null values. */
             val NULL: Part = EmptyPart(null)
 
-            /** A part with empty strings for values.  */
+            /** A part with empty strings for values. */
             val EMPTY: Part = EmptyPart("")
 
-            /**
-             * Returns given part or [.NULL] if the given part is null.
-             */
+            /** Returns given part or [.NULL] if the given part is null. */
             @JvmStatic
             fun nonNull(part: Part?): Part {
                 return part ?: NULL
@@ -1639,14 +1521,14 @@ private constructor() : Parcelable, Comparable<Uri> {
                 if (encoded == null) {
                     return NULL
                 }
-                if (encoded.length == 0) {
+                if (encoded.isEmpty()) {
                     return EMPTY
                 }
 
                 if (decoded == null) {
                     return NULL
                 }
-                if (decoded.length == 0) {
+                if (decoded.isEmpty()) {
                     return EMPTY
                 }
 
@@ -1656,8 +1538,8 @@ private constructor() : Parcelable, Comparable<Uri> {
     }
 
     /**
-     * Immutable wrapper of encoded and decoded versions of a path part. Lazily
-     * creates the encoded or decoded version from the other.
+     * Immutable wrapper of encoded and decoded versions of a path part. Lazily creates the encoded or decoded version
+     * from the other.
      */
     class PathPart private constructor(encoded: String?, decoded: String?) : AbstractPart(encoded, decoded) {
         override val encoded: String?
@@ -1668,17 +1550,13 @@ private constructor() : Parcelable, Comparable<Uri> {
                 return if (hasEncoded) _encoded else (encode(_decoded, "/").also { _encoded = it })
             }
 
-        /**
-         * Cached path segments. This doesn't need to be volatile--we don't
-         * care if other threads see the result.
-         */
+        /** Cached path segments. This doesn't need to be volatile--we don't care if other threads see the result. */
         private var _pathSegments: PathSegments? = null
 
         /**
          * Gets the individual path segments. Parses them if necessary.
          *
-         * @return parsed path segments or null if this isn't a hierarchical
-         * URI
+         * @return parsed path segments or null if this isn't a hierarchical URI
          */
         val pathSegments: PathSegments
             get() {
@@ -1711,16 +1589,14 @@ private constructor() : Parcelable, Comparable<Uri> {
             }
 
         companion object {
-            /** A part with null values.  */
+            /** A part with null values. */
             val NULL: PathPart = PathPart(null, null)
 
-            /** A part with empty strings for values.  */
+            /** A part with empty strings for values. */
             val EMPTY: PathPart = PathPart("", "")
 
             @JvmStatic
-            fun appendEncodedSegment(
-                oldPart: PathPart?, newSegment: String?
-            ): PathPart {
+            fun appendEncodedSegment(oldPart: PathPart?, newSegment: String?): PathPart {
                 // If there is no old path, should we make the new path relative
                 // or absolute? I pick absolute.
 
@@ -1736,14 +1612,15 @@ private constructor() : Parcelable, Comparable<Uri> {
                 }
 
                 val oldPathLength = oldPath.length
-                val newPath = if (oldPathLength == 0) {
-                    // No old path.
-                    "/$newSegment"
-                } else if (oldPath.get(oldPathLength - 1) == '/') {
-                    oldPath + newSegment
-                } else {
-                    "$oldPath/$newSegment"
-                }
+                val newPath =
+                    if (oldPathLength == 0) {
+                        // No old path.
+                        "/$newSegment"
+                    } else if (oldPath.get(oldPathLength - 1) == '/') {
+                        oldPath + newSegment
+                    } else {
+                        "$oldPath/$newSegment"
+                    }
 
                 return fromEncoded(newPath)
             }
@@ -1795,10 +1672,7 @@ private constructor() : Parcelable, Comparable<Uri> {
                 return PathPart(encoded, decoded)
             }
 
-            /**
-             * Prepends path values with "/" if they're present, not empty, and
-             * they don't already start with "/".
-             */
+            /** Prepends path values with "/" if they're present, not empty, and they don't already start with "/". */
             @JvmStatic
             fun makeAbsolute(oldPart: PathPart): PathPart {
                 val encodedCached = oldPart._encoded !== NotCachedHolder.NOT_CACHED
@@ -1812,13 +1686,11 @@ private constructor() : Parcelable, Comparable<Uri> {
                 }
 
                 // Prepend encoded string if present.
-                val newEncoded = if (encodedCached) "/" + oldPart._encoded
-                else NotCachedHolder.NOT_CACHED
+                val newEncoded = if (encodedCached) "/" + oldPart._encoded else NotCachedHolder.NOT_CACHED
 
                 // Prepend decoded string if present.
                 val decodedCached = oldPart._decoded !== NotCachedHolder.NOT_CACHED
-                val newDecoded = if (decodedCached) "/" + oldPart._decoded
-                else NotCachedHolder.NOT_CACHED
+                val newDecoded = if (decodedCached) "/" + oldPart._decoded else NotCachedHolder.NOT_CACHED
 
                 return PathPart(newEncoded, newDecoded)
             }
@@ -1826,10 +1698,8 @@ private constructor() : Parcelable, Comparable<Uri> {
     }
 
     /**
-     * If this [Uri] is `file://`, then resolve and return its
-     * canonical path. Also fixes legacy emulated storage paths so they are
-     * usable across user boundaries. Should always be called from the app
-     * process before sending elsewhere.
+     * If this [Uri] is `file://`, then resolve and return its canonical path. Also fixes legacy emulated storage paths
+     * so they are usable across user boundaries. Should always be called from the app process before sending elsewhere.
      *
      * @hide
      */
@@ -1864,8 +1734,8 @@ private constructor() : Parcelable, Comparable<Uri> {
         }
 
     /**
-     * Test if this is a path prefix match against the given Uri. Verifies that
-     * scheme, authority, and atomic path segments match.
+     * Test if this is a path prefix match against the given Uri. Verifies that scheme, authority, and atomic path
+     * segments match.
      *
      * @hide
      */
@@ -1879,7 +1749,7 @@ private constructor() : Parcelable, Comparable<Uri> {
         val prefixSize = prefixSeg.size
         if (seg.size < prefixSize) return false
 
-        for (i in 0..<prefixSize) {
+        for (i in 0 until prefixSize) {
             if (seg[i] != prefixSeg[i]) {
                 return false
             }
@@ -1889,37 +1759,30 @@ private constructor() : Parcelable, Comparable<Uri> {
     }
 
     companion object {
-        /** Log tag.  */
+        /** Log tag. */
         private val LOG: String = Uri::class.java.simpleName
 
-        /**
-         * The empty URI, equivalent to "".
-         */
-        val EMPTY: Uri = HierarchicalUri(
-            null, Part.NULL, PathPart.EMPTY, Part.NULL, Part.NULL
-        )
+        /** The empty URI, equivalent to "". */
+        val EMPTY: Uri = HierarchicalUri(null, Part.NULL, PathPart.EMPTY, Part.NULL, Part.NULL)
 
-        /** Index of a component which was not found.  */
+        /** Index of a component which was not found. */
         private const val NOT_FOUND = -1
 
-        /** Placeholder value for an index which hasn't been calculated yet.  */
+        /** Placeholder value for an index which hasn't been calculated yet. */
         private const val NOT_CALCULATED = -2
 
-        /**
-         * Error message presented when a user tries to treat an opaque URI as
-         * hierarchical.
-         */
+        /** Error message presented when a user tries to treat an opaque URI as hierarchical. */
         private const val NOT_HIERARCHICAL = "This isn't a hierarchical URI."
 
-        /** Default encoding.  */
+        /** Default encoding. */
         private const val DEFAULT_ENCODING = "UTF-8"
 
         /**
          * Creates a Uri which parses the given encoded URI string.
          *
          * @param uriString an RFC 2396-compliant, encoded URI
-         * @throws NullPointerException if uriString is null
          * @return Uri for this given uri string
+         * @throws NullPointerException if uriString is null
          */
         @JvmStatic
         fun parse(uriString: String): Uri {
@@ -1927,15 +1790,13 @@ private constructor() : Parcelable, Comparable<Uri> {
         }
 
         /**
-         * Creates a Uri from a file. The URI has the form
-         * "file://<absolute path>". Encodes path characters with the exception of
-         * '/'.
-         *
+         * Creates a Uri from a file. The URI has the form "file://<absolute path>". Encodes path characters with the
+         * exception of '/'.
          *
          * Example: "file:///tmp/android.txt"
          *
-         * @throws NullPointerException if file is null
          * @return a Uri for the given file
+         * @throws NullPointerException if file is null
          */
         @JvmStatic
         fun fromFile(file: File?): Uri {
@@ -1944,31 +1805,23 @@ private constructor() : Parcelable, Comparable<Uri> {
             }
 
             val path = PathPart.fromDecoded(file.absolutePath)
-            return HierarchicalUri(
-                "file", Part.EMPTY, path, Part.NULL, Part.NULL
-            )
+            return HierarchicalUri("file", Part.EMPTY, path, Part.NULL, Part.NULL)
         }
 
         /**
-         * Creates an opaque Uri from the given components. Encodes the ssp
-         * which means this method cannot be used to create hierarchical URIs.
+         * Creates an opaque Uri from the given components. Encodes the ssp which means this method cannot be used to
+         * create hierarchical URIs.
          *
          * @param scheme of the URI
-         * @param ssp scheme-specific-part, everything between the
-         * scheme separator (':') and the fragment separator ('#'), which will
-         * get encoded
-         * @param fragment fragment, everything after the '#', null if undefined,
-         * will get encoded
-         *
-         * @throws NullPointerException if scheme or ssp is null
+         * @param ssp scheme-specific-part, everything between the scheme separator (':') and the fragment separator
+         *   ('#'), which will get encoded
+         * @param fragment fragment, everything after the '#', null if undefined, will get encoded
          * @return Uri composed of the given scheme, ssp, and fragment
-         *
+         * @throws NullPointerException if scheme or ssp is null
          * @see Builder if you don't want the ssp and fragment to be encoded
          */
         @JvmStatic
-        fun fromParts(
-            scheme: String?, ssp: String?, fragment: String?
-        ): Uri {
+        fun fromParts(scheme: String?, ssp: String?, fragment: String?): Uri {
             if (scheme == null) {
                 throw NullPointerException("scheme")
             }
@@ -1976,35 +1829,32 @@ private constructor() : Parcelable, Comparable<Uri> {
                 throw NullPointerException("ssp")
             }
 
-            return OpaqueUri(
-                scheme, Part.fromDecoded(ssp), Part.fromDecoded(fragment)
-            )
+            return OpaqueUri(scheme, Part.fromDecoded(ssp), Part.fromDecoded(fragment))
         }
 
-        /** Identifies a null parcelled Uri.  */
+        /** Identifies a null parcelled Uri. */
         private const val NULL_TYPE_ID = 0
 
-        /**
-         * Reads Uris from Parcels.
-         */
+        /** Reads Uris from Parcels. */
         @JvmStatic
-        val CREATOR: Parcelable.Creator<Uri?> = object : Parcelable.Creator<Uri?> {
-            override fun createFromParcel(`in`: Parcel): Uri? {
-                val type = `in`.readInt()
-                when (type) {
-                    NULL_TYPE_ID -> return null
-                    StringUri.TYPE_ID -> return StringUri.readFrom(`in`)
-                    OpaqueUri.TYPE_ID -> return OpaqueUri.readFrom(`in`)
-                    HierarchicalUri.TYPE_ID -> return HierarchicalUri.readFrom(`in`)
+        val CREATOR: Parcelable.Creator<Uri?> =
+            object : Parcelable.Creator<Uri?> {
+                override fun createFromParcel(`in`: Parcel): Uri? {
+                    val type = `in`.readInt()
+                    when (type) {
+                        NULL_TYPE_ID -> return null
+                        StringUri.TYPE_ID -> return StringUri.readFrom(`in`)
+                        OpaqueUri.TYPE_ID -> return OpaqueUri.readFrom(`in`)
+                        HierarchicalUri.TYPE_ID -> return HierarchicalUri.readFrom(`in`)
+                    }
+
+                    throw IllegalArgumentException("Unknown URI type: $type")
                 }
 
-                throw IllegalArgumentException("Unknown URI type: $type")
+                override fun newArray(size: Int): Array<Uri?> {
+                    return arrayOfNulls(size)
+                }
             }
-
-            override fun newArray(size: Int): Array<Uri?> {
-                return arrayOfNulls(size)
-            }
-        }
 
         /**
          * Writes a Uri to a Parcel.
@@ -2024,17 +1874,14 @@ private constructor() : Parcelable, Comparable<Uri> {
         private val HEX_DIGITS = "0123456789ABCDEF".toCharArray()
 
         /**
-         * Encodes characters in the given string as '%'-escaped octets
-         * using the UTF-8 scheme. Leaves letters ("A-Z", "a-z"), numbers
-         * ("0-9"), and unreserved characters ("_-!.~'()*") intact. Encodes
-         * all other characters with the exception of those specified in the
-         * allow argument.
+         * Encodes characters in the given string as '%'-escaped octets using the UTF-8 scheme. Leaves letters ("A-Z",
+         * "a-z"), numbers ("0-9"), and unreserved characters ("_-!.~'()*") intact. Encodes all other characters with
+         * the exception of those specified in the allow argument.
          *
          * @param s string to encode
-         * @param allow set of additional characters to allow in the encoded form,
-         * null if no characters should be skipped
-         * @return an encoded version of s suitable for use as a URI component,
-         * or null if s is null
+         * @param allow set of additional characters to allow in the encoded form, null if no characters should be
+         *   skipped
+         * @return an encoded version of s suitable for use as a URI component, or null if s is null
          */
         @JvmOverloads
         @JvmStatic
@@ -2100,7 +1947,7 @@ private constructor() : Parcelable, Comparable<Uri> {
                 try {
                     val bytes = toEncode.toByteArray(charset(DEFAULT_ENCODING))
                     val bytesLength = bytes.size
-                    for (i in 0..<bytesLength) {
+                    for (i in 0 until bytesLength) {
                         encoded.append('%')
                         encoded.append(HEX_DIGITS[(bytes[i].toInt() and 0xf0) shr 4])
                         encoded.append(HEX_DIGITS[bytes[i].toInt() and 0xf])
@@ -2121,13 +1968,14 @@ private constructor() : Parcelable, Comparable<Uri> {
          *
          * @param c character to check
          * @param allow characters to allow
-         * @return true if the character is allowed or false if it should be
-         * encoded
+         * @return true if the character is allowed or false if it should be encoded
          */
         private fun isAllowed(c: Char, allow: String?): Boolean {
-            return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || "_-!.~'()*".indexOf(c) != NOT_FOUND || (allow != null && allow.indexOf(
-                c
-            ) != NOT_FOUND)
+            return (c in 'A'..'Z') ||
+                (c in 'a'..'z') ||
+                (c in '0'..'9') ||
+                "_-!.~'()*".indexOf(c) != NOT_FOUND ||
+                (allow != null && allow.indexOf(c) != NOT_FOUND)
         }
 
         /**
@@ -2155,12 +2003,10 @@ private constructor() : Parcelable, Comparable<Uri> {
         @JvmStatic
         private fun isEncoded(value: String?, allow: String?): Boolean {
             if (value == null) return true
-            for (index in 0..<value.length) {
-                val c = value[index]
-
+            for (c in value) {
                 // Allow % because that's the prefix for an encoded character. This method will fail
-                // for decoded strings whose onlyinvalid character is %, but it's assumed that % alone
-                // cannot cause malicious behavior in the framework.
+                // for decoded strings whose onlyinvalid character is %, but it's assumed that %
+                // alone cannot cause malicious behavior in the framework.
                 if (!isAllowed(c, allow) && c != '%') {
                     return false
                 }
@@ -2169,26 +2015,23 @@ private constructor() : Parcelable, Comparable<Uri> {
         }
 
         /**
-         * Decodes '%'-escaped octets in the given string using the UTF-8 scheme.
-         * Replaces invalid octets with the unicode replacement character
-         * ("\\uFFFD").
+         * Decodes '%'-escaped octets in the given string using the UTF-8 scheme. Replaces invalid octets with the
+         * unicode replacement character ("\\uFFFD").
          *
          * @param s encoded string to decode
-         * @return the given string with escaped octets decoded, or null if
-         * s is null
+         * @return the given string with escaped octets decoded, or null if s is null
          */
         @JvmStatic
         fun decode(s: String?): String? {
             if (s == null) {
                 return null
             }
-            return UriCodec.decode(
-                s, false,  /* convertPlus */StandardCharsets.UTF_8, false /* throwOnFailure */
-            )
+            return UriCodec.decode(s, false, /* convertPlus */ StandardCharsets.UTF_8, false /* throwOnFailure */)
         }
 
         /**
          * Decodes a string if it was encoded, indicated by containing a %.
+         *
          * @param value encoded string to decode
          * @return decoded value
          * @hide
@@ -2201,13 +2044,11 @@ private constructor() : Parcelable, Comparable<Uri> {
         }
 
         /**
-         * Creates a new Uri by appending an already-encoded path segment to a
-         * base Uri.
+         * Creates a new Uri by appending an already-encoded path segment to a base Uri.
          *
          * @param baseUri Uri to append path segment to
          * @param pathSegment encoded path segment to append
-         * @return a new Uri based on baseUri with the given segment appended to
-         * the path
+         * @return a new Uri based on baseUri with the given segment appended to the path
          * @throws NullPointerException if baseUri is null
          */
         @JvmStatic

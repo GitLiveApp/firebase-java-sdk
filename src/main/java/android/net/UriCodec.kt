@@ -21,7 +21,10 @@ object UriCodec {
 
     @JvmStatic
     private fun unexpectedCharacterException(
-        uri: String, name: String?, unexpected: Char, index: Int
+        uri: String,
+        name: String?,
+        unexpected: Char,
+        index: Int
     ): URISyntaxException {
         val nameString = if (name == null) "" else " in [$name]"
         return URISyntaxException(uri, "Unexpected character$nameString: $unexpected", index)
@@ -45,7 +48,11 @@ object UriCodec {
     }
 
     private fun appendDecoded(
-        builder: StringBuilder, s: String, convertPlus: Boolean, charset: Charset, throwOnFailure: Boolean
+        builder: StringBuilder,
+        s: String,
+        convertPlus: Boolean,
+        charset: Charset,
+        throwOnFailure: Boolean
     ) {
         val decoder = charset.newDecoder().onMalformedInput(CodingErrorAction.REPLACE).replaceWith("�")
             .onUnmappableCharacter(CodingErrorAction.REPORT)
@@ -79,7 +86,10 @@ object UriCodec {
                             if (throwOnFailure) {
                                 throw IllegalArgumentException(
                                     unexpectedCharacterException(
-                                        s, null as String?, c, i - 1
+                                        s,
+                                        null as String?,
+                                        c,
+                                        i - 1
                                     )
                                 )
                             }
@@ -112,7 +122,10 @@ object UriCodec {
     }
 
     private fun flushDecodingByteAccumulator(
-        builder: StringBuilder, decoder: CharsetDecoder, byteBuffer: ByteBuffer, throwOnFailure: Boolean
+        builder: StringBuilder,
+        decoder: CharsetDecoder,
+        byteBuffer: ByteBuffer,
+        throwOnFailure: Boolean
     ) {
         if (byteBuffer.position() != 0) {
             byteBuffer.flip()
