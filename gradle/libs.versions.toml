@@ -19,6 +19,7 @@ google-firebase-database = { module = "com.google.firebase:firebase-database" }
 google-firebase-firestore = { module = "com.google.firebase:firebase-firestore" }
 google-firebase-functions = { module = "com.google.firebase:firebase-functions" }
 google-firebase-installations = { module = "com.google.firebase:firebase-installations" }
+google-firebase-storage = { module = "com.google.firebase:firebase-storage" }
 io-grpc-okhttp = { module = "io.grpc:grpc-okhttp", version.ref = "io-grpc" }
 io-grpc-protobuf-lite = { module = "io.grpc:grpc-protobuf-lite", version.ref = "io-grpc" }
 io-grpc-stub = { module = "io.grpc:grpc-stub", version.ref = "io-grpc" }
