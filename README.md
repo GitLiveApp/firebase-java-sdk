@@ -97,7 +97,7 @@ You can then pass this to the `initialize` function, along with a mock Android `
 ```kotlin
 import android.app.Application
 
-val app = Firebase.initialize(new Application(), options)
+val app = Firebase.initialize(Application(), options)
 ```
 
 ## Project status
