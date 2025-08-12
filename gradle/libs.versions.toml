@@ -2,10 +2,10 @@
 androidx-lifecycle = "2.9.0-alpha01"
 ben-manes-versions = "0.51.0"
 google-firebase-bom = "32.7.0"
-io-grpc = "1.66.0"
+io-grpc = "1.68.0"
 jlleitschuh-ktlint = "12.1.1"
 kotlin = "2.0.20"
-kotlinx-coroutines = "1.8.1"
+kotlinx-coroutines = "1.9.0"
 kotlinx-serialization = "1.7.2"
 ktlint = "0.47.1"
 
@@ -19,6 +19,7 @@ google-firebase-database = { module = "com.google.firebase:firebase-database" }
 google-firebase-firestore = { module = "com.google.firebase:firebase-firestore" }
 google-firebase-functions = { module = "com.google.firebase:firebase-functions" }
 google-firebase-installations = { module = "com.google.firebase:firebase-installations" }
+google-firebase-storage = { module = "com.google.firebase:firebase-storage" }
 io-grpc-okhttp = { module = "io.grpc:grpc-okhttp", version.ref = "io-grpc" }
 io-grpc-protobuf-lite = { module = "io.grpc:grpc-protobuf-lite", version.ref = "io-grpc" }
 io-grpc-stub = { module = "io.grpc:grpc-stub", version.ref = "io-grpc" }
