@@ -81,7 +81,7 @@ class AuthTest : FirebaseTest() {
                         .Builder()
                         .setDisplayName("testDisplayName")
                         .setPhotoUri(Uri.parse("https://picsum.photos/100"))
-                        .build(),
+                        .build()
                 )?.await()
             assertEquals("testDisplayName", auth.currentUser?.displayName)
             assertEquals("https://picsum.photos/100", auth.currentUser?.photoUrl)
