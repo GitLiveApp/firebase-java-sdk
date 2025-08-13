@@ -17,6 +17,7 @@ plugins {
     `java-library`
     `maven-publish`
     signing
+    alias(libs.plugins.publish)
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.kotlinx.serialization)
     alias(libs.plugins.jlleitschuh.ktlint)
@@ -27,8 +28,6 @@ group = "dev.gitlive"
 version = project.property("version") as String
 
 java {
-    withSourcesJar()
-    withJavadocJar()
     sourceCompatibility = JavaVersion.VERSION_17
 }
 
@@ -91,55 +90,43 @@ val cleanLibs by tasks.creating(Delete::class) {
     delete("$${layout.buildDirectory.asFile.get().path}/libs")
 }
 
-publishing {
+mavenPublishing {
+    publishToMavenCentral(automaticRelease = true)
+    signAllPublications()
 
-    repositories {
-        maven {
-            url = uri("https://oss.sonatype.org/service/local/staging/deploy/maven2")
-            credentials {
-                username = project.findProperty("sonatypeUsername") as String? ?: System.getenv("sonatypeUsername")
-                password = project.findProperty("sonatypePassword") as String? ?: System.getenv("sonatypePassword")
+    coordinates("dev.gitlive", "firebase-java-sdk", project.version.toString())
+
+    pom {
+        name.set("Firebase Java SDK")
+        description.set("A pure Java port of the Firebase Android SDK for client-side Java environments.")
+        url.set("https://github.com/GitLiveApp/firebase-java-sdk")
+        inceptionYear.set("2023")
+
+        scm {
+            url.set("https://github.com/GitLiveApp/firebase-java-sdk")
+            connection.set("scm:git:https://github.com/GitLiveApp/firebase-java-sdk.git")
+            developerConnection.set("scm:git:https://github.com/GitLiveApp/firebase-java-sdk.git")
+            tag.set("HEAD")
+        }
+
+        issueManagement {
+            system.set("GitHub Issues")
+            url.set("https://github.com/GitLiveApp/firebase-java-sdk/issues")
+        }
+
+        developers {
+            developer {
+                name.set("Nicholas Bransby-Williams")
+                email.set("nbransby@gmail.com")
             }
         }
-    }
 
-    publications {
-        create<MavenPublication>("library") {
-            from(components["java"])
-
-            pom {
-                name.set("firebase-java-sdk")
-                description.set("The Firebase Java SDK is a pure java port of the Firebase Android SDK to run in clientside java environments such as the desktop.")
-                url.set("https://github.com/GitLiveApp/firebase-java-sdk")
-                inceptionYear.set("2023")
-
-                scm {
-                    url.set("https://github.com/GitLiveApp/firebase-java-sdk")
-                    connection.set("scm:git:https://github.com/GitLiveApp/firebase-java-sdk.git")
-                    developerConnection.set("scm:git:https://github.com/GitLiveApp/firebase-java-sdk.git")
-                    tag.set("HEAD")
-                }
-
-                issueManagement {
-                    system.set("GitHub Issues")
-                    url.set("https://github.com/GitLiveApp/firebase-java-sdk/issues")
-                }
-
-                developers {
-                    developer {
-                        name.set("Nicholas Bransby-Williams")
-                        email.set("nbransby@gmail.com")
-                    }
-                }
-
-                licenses {
-                    license {
-                        name.set("The Apache Software License, Version 2.0")
-                        url.set("http://www.apache.org/licenses/LICENSE-2.0.txt")
-                        distribution.set("repo")
-                        comments.set("A business-friendly OSS license")
-                    }
-                }
+        licenses {
+            license {
+                name.set("The Apache Software License, Version 2.0")
+                url.set("http://www.apache.org/licenses/LICENSE-2.0.txt")
+                distribution.set("repo")
+                comments.set("A business-friendly OSS license")
             }
         }
     }
