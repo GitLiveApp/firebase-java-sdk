@@ -177,13 +177,6 @@ ktlint {
     version.set(libs.versions.ktlint.get())
 }
 
-signing {
-    val signingKey: String? by project
-    val signingPassword: String? by project
-    useInMemoryPgpKeys(signingKey, signingPassword)
-    sign(publishing.publications)
-}
-
 tasks.withType<com.github.benmanes.gradle.versions.updates.DependencyUpdatesTask> {
 
     fun isNonStable(version: String): Boolean {
