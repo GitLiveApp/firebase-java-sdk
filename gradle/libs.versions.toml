@@ -1,5 +1,5 @@
 [versions]
-androidx-lifecycle = "2.9.0-alpha01"
+androidx-lifecycle = "2.10.0-alpha01"
 ben-manes-versions = "0.51.0"
 google-firebase-bom = "32.7.0"
 io-grpc = "1.68.0"
