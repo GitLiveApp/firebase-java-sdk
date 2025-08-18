@@ -5,9 +5,9 @@ import com.google.firebase.FirebasePlatform
 import com.google.firebase.initialize
 import org.junit.Test
 
-class AppTest : FirebaseTest() {
+class FirebaseAppTest : FirebaseTest() {
     @Test
-    fun testInitialize() {
+    fun `initialize firebase`() {
         FirebasePlatform.initializeFirebasePlatform(
             object : FirebasePlatform() {
                 val storage = mutableMapOf<String, String>()
@@ -36,6 +36,6 @@ class AppTest : FirebaseTest() {
                 .setStorageBucket("fir-java-sdk.appspot.com")
                 .setGcmSenderId("341458593155")
                 .build()
-        val app = Firebase.initialize(Application(), options)
+        Firebase.initialize(Application(), options)
     }
 }
