@@ -1,5 +1,7 @@
 package android.net
 
+import android.app.Application
+import com.google.firebase.FirebaseApp
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
@@ -11,7 +13,9 @@ class ConnectivityManager private constructor() {
         val instance = ConnectivityManager()
     }
 
-    private val connected = FirebaseDatabase.getInstance().getReference(".info/connected")
+    private val connected by lazy {
+        FirebaseDatabase.getInstance(FirebaseApp.getApps(Application()).first()).getReference(".info/connected")
+    }
 
     fun registerDefaultNetworkCallback(networkCallback: NetworkCallback) {
         connected.addValueEventListener(networkCallback)

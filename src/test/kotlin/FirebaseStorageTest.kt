@@ -5,10 +5,10 @@ import com.google.firebase.storage.storage
 import org.junit.Assert
 import org.junit.Test
 
-class FirestoreStorageTest : FirebaseTest() {
+class FirebaseStorageTest : FirebaseTest() {
 
     @Test
-    fun test_parsing_storage_uri() {
+    fun `parsing storage uri`() {
         val input = "gs://edifikana-stage.appspot.com"
 
         val normalized = Slashes.normalizeSlashes(input.substring(5))
@@ -19,19 +19,19 @@ class FirestoreStorageTest : FirebaseTest() {
     }
 
     @Test
-    fun test_loading_default_storage_client() {
+    fun `loading default storage client`() {
         Firebase.storage(app)
     }
 
     @Test
-    fun test_getting_root_reference() {
+    fun `getting root reference`() {
         val storage = Firebase.storage(app)
         val reference = storage.reference
         Assert.assertNotNull(reference)
     }
 
     @Test
-    fun test_getting_child_reference() {
+    fun `getting child reference`() {
         val storage = Firebase.storage(app)
         val reference = storage.reference
         val downloadRef = reference.child("mountains.jpg")

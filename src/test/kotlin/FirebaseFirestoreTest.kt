@@ -5,10 +5,10 @@ import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
-class FirestoreTest : FirebaseTest() {
+class FirebaseFirestoreTest : FirebaseTest() {
 
     @Test
-    fun testFirestore(): Unit = runTest {
+    fun `set and get a document`(): Unit = runTest {
         val firestore = Firebase.firestore(app)
         firestore.disableNetwork().await()
 
