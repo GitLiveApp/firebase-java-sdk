@@ -293,6 +293,9 @@ class FirebaseAuth constructor(
 
     companion object {
         @JvmStatic
+        fun getInstance(): FirebaseAuth = getInstance(FirebaseApp.getInstance())
+
+        @JvmStatic
         fun getInstance(app: FirebaseApp): FirebaseAuth = app.get(FirebaseAuth::class.java)
 
         private const val REFRESH_TOKEN_TAG = "refresh_token_tag"
