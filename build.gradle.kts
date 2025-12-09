@@ -1,3 +1,4 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import java.util.Locale
 
 buildscript {
@@ -20,7 +21,7 @@ plugins {
     alias(libs.plugins.publish)
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.kotlinx.serialization)
-    alias(libs.plugins.jlleitschuh.ktlint)
+    alias(libs.plugins.kotlinter)
     alias(libs.plugins.ben.manes.versions)
 }
 
@@ -57,14 +58,10 @@ val extractClasses by tasks.registering(Copy::class) {
 tasks {
     compileKotlin {
         dependsOn(extractClasses)
-        kotlinOptions {
-            jvmTarget = JavaVersion.VERSION_17.toString()
-        }
+        compilerOptions.jvmTarget.set(JvmTarget.JVM_17)
     }
     compileTestKotlin {
-        kotlinOptions {
-            jvmTarget = JavaVersion.VERSION_17.toString()
-        }
+        compilerOptions.jvmTarget.set(JvmTarget.JVM_17)
     }
     withType<Sign>().configureEach {
         onlyIf { !project.gradle.startParameter.taskNames.any { "MavenLocal" in it } }
@@ -147,8 +144,7 @@ dependencies {
     aar(libs.google.firebase.installations)
     aar(libs.google.firebase.storage)
     // extracted aar dependencies
-    // exclude lifecycle libs due to https://github.com/GitLiveApp/firebase-java-sdk/pull/15 - remove the exclude once the dependencies in the aars are updated to the required version
-    api(fileTree(mapOf("dir" to "build/jar", "include" to listOf("*.jar"), "exclude" to listOf("lifecycle-*"))))
+    api(fileTree(mapOf("dir" to "build/jar", "include" to listOf("*.jar"))))
     // polyfill dependencies
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.serialization.core)
@@ -171,10 +167,6 @@ tasks.named("publishToMavenLocal").configure {
 
 tasks.named("publish").configure {
     dependsOn(cleanLibs)
-}
-
-ktlint {
-    version.set(libs.versions.ktlint.get())
 }
 
 tasks.withType<com.github.benmanes.gradle.versions.updates.DependencyUpdatesTask> {
