@@ -34,6 +34,7 @@ import kotlinx.serialization.json.longOrNull
 import okhttp3.Call
 import okhttp3.Callback
 import okhttp3.MediaType
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody
@@ -237,7 +238,7 @@ data class FirebaseUserImpl internal constructor(
 class FirebaseAuth constructor(
     val app: FirebaseApp
 ) : InternalAuthProvider {
-    internal val json = MediaType.parse("application/json; charset=utf-8")
+    internal val json = "application/json; charset=utf-8".toMediaTypeOrNull()
     internal val client: OkHttpClient =
         OkHttpClient
             .Builder()
@@ -276,7 +277,7 @@ class FirebaseAuth constructor(
                             createAuthInvalidUserException("accounts", request, response)
                         )
                     } else {
-                        if (response.body()?.use { it.string() }?.also { responseBody ->
+                        if (response.body.use { it.string() }?.also { responseBody ->
                             user = setResult(responseBody)
                             source.setResult(AuthResult { user })
                         } == null
@@ -411,7 +412,7 @@ class FirebaseAuth constructor(
                         val newBody =
                             jsonParser
                                 .parseToJsonElement(
-                                    response.body()?.use { it.string() } ?: ""
+                                    response.body?.use { it.string() } ?: ""
                                 ).jsonObject
 
                         user = user?.copy(
@@ -486,7 +487,7 @@ class FirebaseAuth constructor(
         request: Request,
         response: Response
     ): FirebaseAuthInvalidUserException {
-        val body = response.body()!!.use { it.string() }
+        val body = response.body.use { it.string() }
         val jsonObject = jsonParser.parseToJsonElement(body).jsonObject
 
         return FirebaseAuthInvalidUserException(
@@ -497,20 +498,20 @@ class FirebaseAuth constructor(
                 ?.contentOrNull
                 ?: "UNKNOWN_ERROR",
             "$action API returned an error, " +
-                "with url [${request.method()}] ${request.url()} ${request.body()} -- " +
-                "response [${response.code()}] ${response.message()} $body"
+                "with url [${request.method}] ${request.url} ${request.body} -- " +
+                "response [${response.code}] ${response.message} $body"
         )
     }
 
     fun signOut() {
         // cancel token refresher
         client
-            .dispatcher()
+            .dispatcher
             .queuedCalls()
             .find { it.request().tag() == REFRESH_TOKEN_TAG }
             ?.cancel() ?: {
             client
-                .dispatcher()
+                .dispatcher
                 .runningCalls()
                 .find { it.request().tag() == REFRESH_TOKEN_TAG }
                 ?.cancel()
@@ -579,9 +580,9 @@ class FirebaseAuth constructor(
                     call: Call,
                     response: Response
                 ) {
-                    val responseBody = response.body()?.use { it.string() }
+                    val responseBody = response.body.use { it.string() }
 
-                    if (!response.isSuccessful || responseBody == null) {
+                    if (!response.isSuccessful) {
                         signOutAndThrowInvalidUserException(responseBody.orEmpty(), "token API returned an error: $body")
                     } else {
                         jsonParser.parseToJsonElement(responseBody).jsonObject.apply {
@@ -659,7 +660,7 @@ class FirebaseAuth constructor(
                         val newBody =
                             jsonParser
                                 .parseToJsonElement(
-                                    response.body()?.use { it.string() } ?: ""
+                                    response.body.use { it.string() }
                                 ).jsonObject
 
                         user?.let { prev ->
@@ -734,7 +735,7 @@ class FirebaseAuth constructor(
                         val newBody =
                             jsonParser
                                 .parseToJsonElement(
-                                    response.body()?.use { it.string() } ?: ""
+                                    response.body.use { it.string() }
                                 ).jsonObject
 
                         user?.let { prev ->
