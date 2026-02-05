@@ -45,6 +45,29 @@ import java.util.concurrent.TimeUnit
 
 internal val jsonParser = Json { ignoreUnknownKeys = true }
 
+/**
+ * Extracts the user ID (sub claim) from a Firebase ID token JWT.
+ * This is used as a fallback when the API response doesn't include localId/uid directly,
+ * which happens with signInWithCustomToken.
+ *
+ * @param idToken The Firebase ID token JWT string
+ * @return The user ID from the sub claim, or null if extraction fails
+ */
+private fun extractUidFromIdToken(idToken: String?): String? {
+    if (idToken == null) return null
+    return try {
+        val parts = idToken.split(".")
+        if (parts.size != 3) return null
+        val payload = String(Base64.getUrlDecoder().decode(parts[1]))
+        val claims = jsonParser.parseToJsonElement(payload).jsonObject
+        // The 'sub' claim contains the user ID, 'user_id' is also sometimes present
+        claims["sub"]?.jsonPrimitive?.contentOrNull
+            ?: claims["user_id"]?.jsonPrimitive?.contentOrNull
+    } catch (e: Exception) {
+        null
+    }
+}
+
 class UrlFactory(
     private val app: FirebaseApp,
     private val emulatorUrl: String? = null
@@ -82,6 +105,12 @@ data class FirebaseUserImpl internal constructor(
         uid =
         data["uid"]?.jsonPrimitive?.contentOrNull ?: data["user_id"]?.jsonPrimitive?.contentOrNull
             ?: data["localId"]?.jsonPrimitive?.contentOrNull
+            // Fallback: extract uid from idToken JWT payload (sub claim)
+            // This is needed for signInWithCustomToken which doesn't return localId in the response
+            ?: extractUidFromIdToken(
+                data["idToken"]?.jsonPrimitive?.contentOrNull
+                    ?: data["id_token"]?.jsonPrimitive?.contentOrNull
+            )
             ?: "",
         idToken = data["idToken"]?.jsonPrimitive?.contentOrNull ?: data.getValue("id_token").jsonPrimitive.content,
         refreshToken = data["refreshToken"]?.jsonPrimitive?.contentOrNull ?: data.getValue("refresh_token").jsonPrimitive.content,
