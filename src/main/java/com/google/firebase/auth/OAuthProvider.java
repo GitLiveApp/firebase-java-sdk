@@ -1,52 +1,120 @@
 package com.google.firebase.auth;
 
-import kotlin.NotImplementedError;
-
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-public class OAuthProvider {
+public final class OAuthProvider {
+    private final String provider;
+    private final FirebaseAuth auth;
+    private final List<String> scopes;
+    private final Map<String, String> customParameters;
 
     public OAuthProvider(Builder builder) {
-        throw new NotImplementedError();
+        provider = builder.provider;
+        auth = builder.auth;
+        scopes = Collections.unmodifiableList(new ArrayList<>(builder.scopes));
+        customParameters = Collections.unmodifiableMap(new LinkedHashMap<>(builder.customParameters));
     }
 
-    public static AuthCredential getCredential(String email, String password) {
-        throw new NotImplementedError();
+    public static AuthCredential getCredential(String providerId, String idToken, String accessToken) {
+        return new OAuthCredential(providerId, idToken, accessToken, null);
     }
 
-    public static class Builder {
+    public String getProviderId() {
+        return provider;
+    }
+
+    public List<String> getScopes() {
+        return scopes;
+    }
+
+    public Map<String, String> getCustomParameters() {
+        return customParameters;
+    }
+
+    FirebaseAuth getAuth() {
+        return auth;
+    }
+
+    public static final class Builder {
+        private final String provider;
+        private final FirebaseAuth auth;
+        private List<String> scopes = Collections.emptyList();
+        private final Map<String, String> customParameters = new LinkedHashMap<>();
+
+        private Builder(String provider, FirebaseAuth auth) {
+            this.provider = AuthCredential.requireValue(provider, "provider");
+            if (auth == null) {
+                throw new IllegalArgumentException("auth must not be null.");
+            }
+            this.auth = auth;
+        }
+
         public Builder setScopes(List<String> scopes) {
-            throw new NotImplementedError();
+            if (scopes == null) {
+                throw new IllegalArgumentException("scopes must not be null.");
+            }
+            this.scopes = new ArrayList<>(scopes);
+            return this;
         }
+
         public Builder addCustomParameters(Map<String, String> customParameters) {
-            throw new NotImplementedError();
+            if (customParameters == null) {
+                throw new IllegalArgumentException("customParameters must not be null.");
+            }
+            this.customParameters.putAll(customParameters);
+            return this;
         }
+
         public OAuthProvider build() {
-            throw new NotImplementedError();
+            return new OAuthProvider(this);
         }
     }
 
-    public static class CredentialBuilder {
-        public Builder setAccessToken(String accessToken) {
-            throw new NotImplementedError();
+    public static final class CredentialBuilder {
+        private final String provider;
+        private String accessToken;
+        private String idToken;
+        private String rawNonce;
+
+        private CredentialBuilder(String provider) {
+            this.provider = AuthCredential.requireValue(provider, "provider");
         }
-        public Builder setIdToken(String idToken) {
-            throw new NotImplementedError();
+
+        public CredentialBuilder setAccessToken(String accessToken) {
+            this.accessToken = AuthCredential.requireValue(accessToken, "accessToken");
+            return this;
         }
-        public Builder setIdTokenWithRawNonce(String idToken, String rawNonce) {
-            throw new NotImplementedError();
+
+        public CredentialBuilder setIdToken(String idToken) {
+            this.idToken = AuthCredential.requireValue(idToken, "idToken");
+            rawNonce = null;
+            return this;
         }
-        public void build() {
-            throw new NotImplementedError();
+
+        public CredentialBuilder setIdTokenWithRawNonce(String idToken, String rawNonce) {
+            this.idToken = AuthCredential.requireValue(idToken, "idToken");
+            this.rawNonce = AuthCredential.optionalValue(rawNonce, "rawNonce");
+            return this;
         }
+
+        public AuthCredential build() {
+            return new OAuthCredential(provider, idToken, accessToken, rawNonce);
+        }
+    }
+
+    public static Builder newBuilder(String provider) {
+        return new Builder(provider, FirebaseAuth.getInstance());
     }
 
     public static Builder newBuilder(String provider, FirebaseAuth auth) {
-        throw new NotImplementedError();
+        return new Builder(provider, auth);
     }
 
     public static CredentialBuilder newCredentialBuilder(String provider) {
-        throw new NotImplementedError();
+        return new CredentialBuilder(provider);
     }
 }

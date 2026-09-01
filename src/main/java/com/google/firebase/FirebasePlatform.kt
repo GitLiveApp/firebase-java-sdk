@@ -1,8 +1,19 @@
 package com.google.firebase
 
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import java.io.File
 
 abstract class FirebasePlatform {
+
+    open val mainDispatcher: CoroutineDispatcher
+        get() = Dispatchers.Default
+
+    internal val mainScope: CoroutineScope by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+        CoroutineScope(SupervisorJob() + mainDispatcher)
+    }
 
     companion object {
 
