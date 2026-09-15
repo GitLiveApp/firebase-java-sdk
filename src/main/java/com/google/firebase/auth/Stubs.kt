@@ -20,19 +20,21 @@ class ActionCodeSettings {
 
 class FirebaseAuthMultiFactorException(errorCode: String, detailMessage: String) : FirebaseAuthException(errorCode, detailMessage)
 
-class UserInfo {
-    val displayName: String? get() = TODO()
-    val email: String get() = TODO()
-    val phoneNumber: String get() = TODO()
-    val photoUrl: Uri? get() = TODO()
-    val providerId: String get() = TODO()
-    val uid: String get() = TODO()
+class UserInfo internal constructor(
+    val displayName: String?,
+    val email: String?,
+    val phoneNumber: String?,
+    photoUrl: String?,
+    val providerId: String,
+    val uid: String
+) {
+    val photoUrl: Uri? = photoUrl?.let(Uri::parse)
 }
 
-class FirebaseUserMetadata {
-    val creationTimestamp: Long get() = TODO()
-    val lastSignInTimestamp: Long get() = TODO()
-}
+class FirebaseUserMetadata internal constructor(
+    val creationTimestamp: Long,
+    val lastSignInTimestamp: Long
+)
 
 class MultiFactor {
     val uid: String get() = TODO()
@@ -59,8 +61,17 @@ class MultiFactorResolver {
     fun resolveSignIn(assertion: MultiFactorAssertion): Task<AuthResult> = TODO()
 }
 
-class PhoneAuthCredential : AuthCredential()
-class OAuthCredential : AuthCredential()
+class PhoneAuthCredential internal constructor(
+    internal val verificationId: String,
+    internal val smsCode: String
+) : AuthCredential("phone") {
+    init {
+        require(verificationId.isNotBlank()) { "verificationId must not be blank" }
+        require(smsCode.isNotBlank()) { "smsCode must not be blank" }
+    }
+
+    override fun toString(): String = "PhoneAuthCredential{provider='phone'}"
+}
 
 interface SignInMethodQueryResult {
     val signInMethods: List<String>

@@ -1,7 +1,6 @@
 package android.os
 
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
+import com.google.firebase.FirebasePlatform
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -10,14 +9,14 @@ open class Handler(looper: Looper?, callback: Handler.Callback?) {
     constructor(looper: Looper) : this(looper, null)
 
     fun post(runnable: Runnable): Boolean {
-        GlobalScope.launch(Dispatchers.Main) {
+        FirebasePlatform.firebasePlatform.mainScope.launch {
             runnable.run()
         }
         return true
     }
 
     fun postDelayed(runnable: Runnable, time: Long): Boolean {
-        GlobalScope.launch(Dispatchers.Main) {
+        FirebasePlatform.firebasePlatform.mainScope.launch {
             delay(time)
             runnable.run()
         }

@@ -1,9 +1,13 @@
 package com.google.firebase.auth;
 
-import kotlin.NotImplementedError;
+public final class GoogleAuthProvider {
+    public static final String PROVIDER_ID = "google.com";
+    public static final String GOOGLE_SIGN_IN_METHOD = "google.com";
 
-public class GoogleAuthProvider {
-    public static AuthCredential getCredential(String email, String password) {
-        throw new NotImplementedError();
+    private GoogleAuthProvider() {
+    }
+
+    public static AuthCredential getCredential(String idToken, String accessToken) {
+        return new GoogleAuthCredential(idToken, accessToken);
     }
 }
