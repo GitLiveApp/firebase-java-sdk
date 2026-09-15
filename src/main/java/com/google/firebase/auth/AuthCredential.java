@@ -68,6 +68,12 @@ public abstract class AuthCredential {
         return value;
     }
 
+    static void requireOAuthToken(String idToken, String accessToken) {
+        if (idToken == null && accessToken == null) {
+            throw new IllegalArgumentException("At least one ID token or access token is required.");
+        }
+    }
+
     private static String formValue(String name, String value) {
         return URLEncoder.encode(name, StandardCharsets.UTF_8) + "=" +
             URLEncoder.encode(value, StandardCharsets.UTF_8);

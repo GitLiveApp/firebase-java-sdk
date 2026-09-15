@@ -4,6 +4,7 @@ import com.google.firebase.FirebaseApp
 import com.google.firebase.FirebasePlatform
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseAuthInvalidUserException
+import com.google.firebase.auth.FirebaseUserImpl
 import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.auth.OAuthCredential
 import com.google.firebase.auth.OAuthProvider
@@ -13,6 +14,8 @@ import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import okhttp3.mockwebserver.MockResponse
@@ -134,8 +137,10 @@ class FirebaseAuthCredentialTest : FirebaseTest() {
             platform = RecordingFirebasePlatform(storageFile)
             FirebasePlatform.initializeFirebasePlatform(platform)
             auth = FirebaseAuth.getInstance(app).apply { useEmulator(server.hostName, server.port) }
-            server.enqueue(successfulAuthResponse(idToken = "persisted-id-token"))
+            val persistedToken = firebaseToken()
+            server.enqueue(successfulAuthResponse(idToken = persistedToken))
             auth.signInWithCredential(GoogleAuthProvider.getCredential("google-token", null)).await()
+            assertTrue(Json.parseToJsonElement(platform.values.values.single()).jsonObject.containsKey("tokenIssuedAt"))
             val options = app.options
 
             FirebaseApp.clearInstancesForTest()
@@ -148,8 +153,64 @@ class FirebaseAuthCredentialTest : FirebaseTest() {
             assertEquals("jvm-user", auth.currentUser?.uid)
             assertEquals("jvm@example.com", auth.currentUser?.email)
             assertEquals(listOf("google.com"), auth.currentUser?.providerData?.map { it.providerId })
-            assertTrue(platform.values.values.single().contains("persisted-id-token"))
+            assertTrue(auth.currentUser!!.isEmailVerified)
+            assertEquals(1600000000000L, auth.currentUser!!.metadata.creationTimestamp)
+            assertEquals(1700000000000L, auth.currentUser!!.metadata.lastSignInTimestamp)
+            assertTrue(platform.values.values.single().contains(persistedToken))
+            assertEquals(persistedToken, auth.currentUser!!.getIdToken(false).await().token)
+            assertEquals(1, server.requestCount)
+            server.takeRequest()
+            server.enqueue(MockResponse().setBody("{}"))
+            auth.currentUser!!.delete().await()
+            assertEquals("/www.googleapis.com/identitytoolkit/v3/relyingparty/deleteAccount", server.takeRequest().requestUrl?.encodedPath())
         }
+
+    @Test
+    fun `unknown account creation does not use the token receipt time`() {
+        val user = FirebaseUserImpl(
+            app,
+            Json.parseToJsonElement(
+                """{"localId":"jvm-user","idToken":"token","refreshToken":"refresh","expiresIn":3600}"""
+            ).jsonObject
+        )
+        assertEquals(0L, user.metadata.creationTimestamp)
+        assertTrue(user.tokenIssuedAt > 0)
+    }
+
+    @Test
+    fun `legacy stored users retain known metadata and conservatively refresh token time`() {
+        val user = FirebaseUserImpl(
+            app,
+            Json.parseToJsonElement(
+                """{"uid":"jvm-user","idToken":"token","refreshToken":"refresh","expiresIn":3600,"createdAt":1600000000000,"lastSignInAt":1700000000000,"isEmailVerified":true}"""
+            ).jsonObject
+        )
+        assertTrue(user.isEmailVerified)
+        assertEquals(1700000000000L, user.metadata.lastSignInTimestamp)
+        assertEquals(0L, user.metadata.creationTimestamp)
+        assertEquals(0L, user.tokenIssuedAt)
+    }
+
+    @Test
+    fun `restored expired token refreshes using persisted token time`() = runTest {
+        server.enqueue(successfulAuthResponse(idToken = "expired-token"))
+        auth.signInWithCredential(GoogleAuthProvider.getCredential("google-token", null)).await()
+        server.takeRequest()
+        val storageKey = platform.values.keys.single()
+        val stored = Json.parseToJsonElement(platform.values.getValue(storageKey)).jsonObject
+        platform.values[storageKey] = JsonObject(stored + ("tokenIssuedAt" to JsonPrimitive(1L))).toString()
+        val options = app.options
+        FirebaseApp.clearInstancesForTest()
+        val recreatedApp = Firebase.initialize(Application(), options)
+        auth = FirebaseAuth.getInstance(recreatedApp).apply { useEmulator(server.hostName, server.port) }
+        val refreshedToken = firebaseToken()
+        server.enqueue(refreshResponse(refreshedToken))
+
+        assertEquals(refreshedToken, auth.currentUser!!.getIdToken(false).await().token)
+        assertEquals("/securetoken.googleapis.com/v1/token", server.takeRequest().requestUrl?.encodedPath())
+        assertEquals(1600000000000L, auth.currentUser!!.metadata.creationTimestamp)
+        assertEquals(1700000000000L, auth.currentUser!!.metadata.lastSignInTimestamp)
+    }
 
     @Test
     fun `forced token refresh exchanges the refresh token and persists the result`() =
@@ -163,11 +224,19 @@ class FirebaseAuthCredentialTest : FirebaseTest() {
             val result = auth.currentUser!!.getIdToken(true).await()
 
             assertEquals(refreshedToken, result.token)
+            assertEquals(1600000000000L, auth.currentUser!!.metadata.creationTimestamp)
+            assertEquals(1700000000000L, auth.currentUser!!.metadata.lastSignInTimestamp)
+            assertTrue(auth.currentUser!!.isEmailVerified)
             val request = server.takeRequest()
             assertEquals("/securetoken.googleapis.com/v1/token", request.requestUrl?.encodedPath())
             val body = Json.parseToJsonElement(request.body.readUtf8()).jsonObject
             assertEquals("refresh-token", body.getValue("refresh_token").jsonPrimitive.content)
             assertTrue(platform.values.values.single().contains(refreshedToken))
+            assertEquals(refreshedToken, auth.currentUser!!.getIdToken(false).await().token)
+            assertEquals(2, server.requestCount)
+            server.enqueue(MockResponse().setBody("{}"))
+            auth.currentUser!!.delete().await()
+            assertEquals("/www.googleapis.com/identitytoolkit/v3/relyingparty/deleteAccount", server.takeRequest().requestUrl?.encodedPath())
         }
 
     @Test
@@ -183,6 +252,8 @@ class FirebaseAuthCredentialTest : FirebaseTest() {
 
             assertEquals(refreshedToken, result.token)
             assertEquals("/securetoken.googleapis.com/v1/token", server.takeRequest().requestUrl?.encodedPath())
+            assertEquals(1600000000000L, auth.currentUser!!.metadata.creationTimestamp)
+            assertEquals(1700000000000L, auth.currentUser!!.metadata.lastSignInTimestamp)
         }
 
     @Test
@@ -216,7 +287,7 @@ class FirebaseAuthCredentialTest : FirebaseTest() {
     @Test
     fun `phone credential uses phone endpoint for sign in and linking`() =
         runTest {
-            server.enqueue(successfulAuthResponse(idToken = "phone-token", providerId = "phone"))
+            server.enqueue(phoneResponse("phone-token"))
 
             auth.signInWithCredential(PhoneAuthProvider.getCredential("phone-session", "123456")).await()
 
@@ -225,14 +296,22 @@ class FirebaseAuthCredentialTest : FirebaseTest() {
             val signInJson = Json.parseToJsonElement(signIn.body.readUtf8()).jsonObject
             assertEquals("phone-session", signInJson.getValue("sessionInfo").jsonPrimitive.content)
             assertEquals("123456", signInJson.getValue("code").jsonPrimitive.content)
+            assertEquals(listOf("phone"), auth.currentUser!!.providerData.map { it.providerId })
 
-            server.enqueue(successfulAuthResponse(idToken = "linked-phone-token", providerId = "phone"))
+            server.enqueue(successfulAuthResponse(idToken = "google-token"))
+            auth.signInWithCredential(GoogleAuthProvider.getCredential("google-token", null)).await()
+            server.takeRequest()
+
+            server.enqueue(phoneResponse("linked-phone-token"))
             auth.currentUser!!.linkWithCredential(PhoneAuthProvider.getCredential("link-session", "654321")).await()
 
             val linkJson = Json.parseToJsonElement(server.takeRequest().body.readUtf8()).jsonObject
-            assertEquals("phone-token", linkJson.getValue("idToken").jsonPrimitive.content)
+            assertEquals("google-token", linkJson.getValue("idToken").jsonPrimitive.content)
             assertEquals("link-session", linkJson.getValue("sessionInfo").jsonPrimitive.content)
             assertEquals("654321", linkJson.getValue("code").jsonPrimitive.content)
+            assertEquals(listOf("google.com", "phone"), auth.currentUser!!.providerData.map { it.providerId })
+            assertEquals(1600000000000L, auth.currentUser!!.metadata.creationTimestamp)
+            assertEquals(1700000000000L, auth.currentUser!!.metadata.lastSignInTimestamp)
         }
 
     @Test
@@ -342,12 +421,19 @@ class FirebaseAuthCredentialTest : FirebaseTest() {
                   "idToken": "$idToken",
                   "refreshToken": "refresh-token",
                   "expiresIn": "$expiresIn",
+                  "createdAt": "1600000000000",
+                  "lastLoginAt": "1700000000000",
                   "email": "jvm@example.com",
                   "emailVerified": true,
                   "providerId": "$providerId"
                 }
                 """.trimIndent()
             )
+
+    private fun phoneResponse(idToken: String) =
+        MockResponse().setHeader("Content-Type", "application/json").setBody(
+            """{"localId":"jvm-user","idToken":"$idToken","refreshToken":"refresh-token","expiresIn":"3600","phoneNumber":"+15555550123"}"""
+        )
 
     private fun refreshResponse(idToken: String) =
         MockResponse()

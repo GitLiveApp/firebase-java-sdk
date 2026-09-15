@@ -9,7 +9,7 @@ import java.io.File
 abstract class FirebasePlatform {
 
     open val mainDispatcher: CoroutineDispatcher
-        get() = Dispatchers.Default
+        get() = Dispatchers.Main
 
     internal val mainScope: CoroutineScope by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
         CoroutineScope(SupervisorJob() + mainDispatcher)
