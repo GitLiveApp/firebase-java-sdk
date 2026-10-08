@@ -72,6 +72,11 @@ tasks {
     javadoc {
         exclude("android/**", "libcore/util/**")
     }
+    test {
+        // Tests keep Firebase's data in per-test folders here until the next run
+        val testData = layout.buildDirectory.dir("test-data")
+        doFirst { delete(testData) }
+    }
 }
 
 val jar by tasks.getting(Jar::class) {

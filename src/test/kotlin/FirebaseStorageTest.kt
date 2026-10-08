@@ -35,8 +35,7 @@ class FirebaseStorageTest : FirebaseTest() {
         val storage = Firebase.storage(app)
         val reference = storage.reference
         val downloadRef = reference.child("mountains.jpg")
-        val downloadUrl = downloadRef.downloadUrl
 
-        Assert.assertNotNull(downloadUrl)
+        Assert.assertEquals("/mountains.jpg", downloadRef.path)
     }
 }

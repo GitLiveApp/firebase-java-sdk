@@ -2,10 +2,17 @@ import com.google.firebase.Firebase
 import com.google.firebase.firestore.firestore
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.test.runTest
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class FirebaseFirestoreTest : FirebaseTest() {
+
+    // Stops Firestore's background work, such as cache garbage collection, so it does not log into later tests
+    @After
+    fun terminateFirestore(): Unit = runTest {
+        Firebase.firestore(app).terminate().await()
+    }
 
     @Test
     fun `set and get a document`(): Unit = runTest {
