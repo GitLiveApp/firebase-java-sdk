@@ -80,9 +80,7 @@ data class FirebaseUserImpl internal constructor(
         app = app,
         isAnonymous = isAnonymous,
         uid =
-        data["uid"]?.jsonPrimitive?.contentOrNull ?: data["user_id"]?.jsonPrimitive?.contentOrNull
-            ?: data["localId"]?.jsonPrimitive?.contentOrNull
-            ?: "",
+        responseUid(data, data["idToken"]?.jsonPrimitive?.contentOrNull ?: data.getValue("id_token").jsonPrimitive.content),
         idToken = data["idToken"]?.jsonPrimitive?.contentOrNull ?: data.getValue("id_token").jsonPrimitive.content,
         refreshToken = data["refreshToken"]?.jsonPrimitive?.contentOrNull ?: data.getValue("refresh_token").jsonPrimitive.content,
         expiresIn = data["expiresIn"]?.jsonPrimitive?.intOrNull ?: data.getValue("expires_in").jsonPrimitive.int,
@@ -277,8 +275,12 @@ class FirebaseAuth constructor(
                         )
                     } else {
                         if (response.body()?.use { it.string() }?.also { responseBody ->
-                            user = setResult(responseBody)
-                            source.setResult(AuthResult { user })
+                            try {
+                                user = setResult(responseBody)
+                                source.setResult(AuthResult { user })
+                            } catch (exception: Exception) {
+                                source.setException(exception)
+                            }
                         } == null
                         ) {
                             source.setException(
@@ -371,7 +373,7 @@ class FirebaseAuth constructor(
                 FirebaseUserImpl(app, jsonParser.parseToJsonElement(responseBody).jsonObject)
             }
         )
-        return source.task.continueWithTask { updateByGetAccountInfo() }
+        return source.task.onSuccessTask { updateByGetAccountInfo() }
     }
 
     private fun updateByGetAccountInfo(): Task<AuthResult> {
@@ -408,19 +410,21 @@ class FirebaseAuth constructor(
                             createAuthInvalidUserException("updateWithAccountInfo", request, response)
                         )
                     } else {
-                        val newBody =
-                            jsonParser
-                                .parseToJsonElement(
-                                    response.body()?.use { it.string() } ?: ""
-                                ).jsonObject
-
-                        user = user?.copy(
-                            createdAt = newBody["createdAt"]?.jsonPrimitive?.longOrNull ?: user!!.createdAt,
-                            email = newBody["email"]?.jsonPrimitive?.contentOrNull ?: user!!.email,
-                            photoUrl = newBody["photoUrl"]?.jsonPrimitive?.contentOrNull ?: user!!.photoUrl,
-                            displayName = newBody["displayName"]?.jsonPrimitive?.contentOrNull ?: user!!.displayName
-                        )
-                        source.setResult(AuthResult { user })
+                        try {
+                            val data = jsonParser.parseToJsonElement(response.body()?.use { it.string() } ?: "").jsonObject
+                            val profile = accountProfile(data)
+                            val previous = requireNotNull(user) { "No user for account lookup" }
+                            user = previous.copy(
+                                uid = responseUid(data, previous.idToken),
+                                createdAt = profile["createdAt"]?.jsonPrimitive?.longOrNull ?: previous.createdAt,
+                                email = profile["email"]?.jsonPrimitive?.contentOrNull ?: previous.email,
+                                photoUrl = profile["photoUrl"]?.jsonPrimitive?.contentOrNull ?: previous.photoUrl,
+                                displayName = profile["displayName"]?.jsonPrimitive?.contentOrNull ?: previous.displayName
+                            )
+                            source.setResult(AuthResult { user })
+                        } catch (exception: Exception) {
+                            source.setException(exception)
+                        }
                     }
                 }
             }
