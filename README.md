@@ -106,13 +106,13 @@ The following libraries are available for the various Firebase products.
 
 | Service or Product	                                                                               | Port of Android version |
 |---------------------------------------------------------------------------------------------------|:------------------------|
-| [Firebase Android BoM](https://maven.google.com/web/index.html?#com.google.firebase:firebase-bom) | `32.7.0`                |
+| [Firebase Android BoM](https://maven.google.com/web/index.html?#com.google.firebase:firebase-bom) | `34.18.0`               |
 | [Authentication](https://firebase.google.com/docs/auth)                                           | N/A[^1]                 |
-| [Cloud Firestore](https://firebase.google.com/docs/firestore)                                     | `24.10.0`               |
-| [Realtime Database](https://firebase.google.com/docs/database)                                    | `20.3.0`                |
-| [Cloud Functions](https://firebase.google.com/docs/functions)                                     | `20.4.0`                |
-| ~[Remote Config](https://firebase.google.com/docs/remote-config)~                                 | `21.6.0`[^2]            |
-| ~[Installations](https://firebase.google.com/docs/projects/manage-installations)~                 | `17.2.0`[^2]            |
+| [Cloud Firestore](https://firebase.google.com/docs/firestore)                                     | `26.6.0`                |
+| [Realtime Database](https://firebase.google.com/docs/database)                                    | `22.0.1`                |
+| [Cloud Functions](https://firebase.google.com/docs/functions)                                     | `22.1.1`                |
+| ~[Remote Config](https://firebase.google.com/docs/remote-config)~                                 | `23.1.0`[^2]            |
+| ~[Installations](https://firebase.google.com/docs/projects/manage-installations)~                 | `19.1.2`[^2]            |
 
 [^1]: Google has not open-sourced the Firebase Auth implementation for Android so a basic implementation using the Rest API is provided.
 [^2]: Although the libraries are inlcuded they are currently not funtional 
