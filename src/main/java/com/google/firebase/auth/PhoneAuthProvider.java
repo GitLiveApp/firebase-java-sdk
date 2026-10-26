@@ -7,11 +7,14 @@ import kotlin.NotImplementedError;
 import java.util.concurrent.TimeUnit;
 
 public class PhoneAuthProvider {
-    public static PhoneAuthCredential getCredential(String email, String password) {
-        throw new NotImplementedError();
+    public static PhoneAuthCredential getCredential(String verificationId, String smsCode) {
+        return new PhoneAuthCredential(verificationId, smsCode);
     }
     public static PhoneAuthProvider getInstance(FirebaseAuth auth) {
-        throw new NotImplementedError();
+        if (auth == null) {
+            throw new IllegalArgumentException("auth must not be null.");
+        }
+        return new PhoneAuthProvider();
     }
 
     public void verifyPhoneNumber(String phoneNumber, long timeout, TimeUnit unit, Activity activity, PhoneAuthProvider.OnVerificationStateChangedCallbacks callbacks) {

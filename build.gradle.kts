@@ -138,6 +138,7 @@ dependencies {
     testImplementation(libs.kotlinx.coroutines.play.services)
     testImplementation(libs.kotlinx.coroutines.swing)
     testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.okhttp.mockwebserver)
     // firebase aars
     aar(platform(libs.google.firebase.bom))
     aar(libs.google.firebase.firestore)
