@@ -37,5 +37,5 @@ abstract class FirebasePlatform {
     open fun getDatabasePath(name: String): File = File("${System.getProperty("java.io.tmpdir")}${File.separatorChar}$name")
 
     /** The directory the Firebase SDKs keep their files in, such as the DataStore of the firebase-common heartbeat store. */
-    open fun getFilesDir(): File = File(System.getProperty("java.io.tmpdir"))
+    open fun getFilesDir(): File = File("${System.getProperty("java.io.tmpdir")}${File.separatorChar}firebase-files")
 }

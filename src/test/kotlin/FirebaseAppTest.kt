@@ -1,9 +1,13 @@
 import android.app.Application
+import android.content.Context
 import com.google.firebase.Firebase
 import com.google.firebase.FirebaseOptions
 import com.google.firebase.FirebasePlatform
 import com.google.firebase.initialize
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.io.File
 
 class FirebaseAppTest : FirebaseTest() {
     @Test
@@ -24,6 +28,11 @@ class FirebaseAppTest : FirebaseTest() {
                 }
 
                 override fun log(msg: String) = println(msg)
+
+                // Keeps Firebase's data in this test's folder
+                override fun getDatabasePath(name: String) = File(dataFolder, name)
+
+                override fun getFilesDir() = File(dataFolder, "files")
             }
         )
         val options =
@@ -37,5 +46,25 @@ class FirebaseAppTest : FirebaseTest() {
                 .setGcmSenderId("341458593155")
                 .build()
         Firebase.initialize(Application(), options)
+    }
+
+    @Test
+    fun `data collection default can be changed`() {
+        // The Boolean? overload; the boolean one is deprecated
+        val enabled: Boolean? = true
+        val disabled: Boolean? = false
+
+        app.setDataCollectionDefaultEnabled(enabled)
+        assertTrue(app.isDataCollectionDefaultEnabled)
+
+        app.setDataCollectionDefaultEnabled(disabled)
+        assertFalse(app.isDataCollectionDefaultEnabled)
+    }
+
+    @Test
+    fun `initialize firebase with a plain Context`() {
+        val app = Firebase.initialize(Context(), options)
+
+        assertTrue(app.applicationContext is Application)
     }
 }
