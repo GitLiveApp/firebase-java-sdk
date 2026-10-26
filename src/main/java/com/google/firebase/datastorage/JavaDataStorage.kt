@@ -12,6 +12,7 @@ import com.google.firebase.FirebasePlatform
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.runBlocking
 import java.io.File
+import java.net.URLEncoder
 import java.util.concurrent.ConcurrentHashMap
 
 /**
@@ -37,7 +38,8 @@ class JavaDataStorage(val context: Context, val name: String) {
 
     private val editLock = ThreadLocal<Boolean>()
 
-    private fun file(): File = File(context.filesDir, "datastore${File.separatorChar}$name.preferences_pb")
+    /** Under [Context.filesDir] like Android, with the name URL-encoded as the Context file APIs do: it carries the app id, whose `:` Windows rejects. */
+    private fun file(): File = File(context.filesDir, "datastore${File.separatorChar}${URLEncoder.encode(name, Charsets.UTF_8)}.preferences_pb")
 
     fun <T> getSync(key: Preferences.Key<T>, defaultValue: T): T = runBlocking {
         dataStore.data.firstOrNull()?.get(key) ?: defaultValue

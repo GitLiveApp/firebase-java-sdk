@@ -1,6 +1,6 @@
 package android.content
 
-import android.content.SharedPreferences.Editor
+import android.app.Application
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.content.res.Resources
@@ -10,11 +10,17 @@ import android.os.PowerManager
 import android.os.UserManager
 import com.google.firebase.FirebasePlatform
 import java.io.File
+import java.io.FileInputStream
+import java.io.FileOutputStream
+import java.net.URLEncoder
 
 open class Context {
 
+    // Firebase casts the application context to Application, so a plain Context provides one
     val applicationContext: Context
-        get() = this
+        get() = this as? Application ?: application
+
+    private val application: Application by lazy { Application() }
 
     val mainLooper: Looper
         get() = Looper.getMainLooper()
@@ -31,11 +37,11 @@ open class Context {
     val isDeviceProtectedStorage: Boolean
         get() = false
 
+    // The JVM has no separate device-protected storage, so this context already is it
+    fun createDeviceProtectedStorageContext(): Context = this
+
     val noBackupFilesDir: File
         get() = File(System.getProperty("java.io.tmpdir"))
-
-    val filesDir: File
-        get() = FirebasePlatform.firebasePlatform.getFilesDir()
 
     val classLoader: ClassLoader
         get() = ClassLoader.getSystemClassLoader()
@@ -45,74 +51,8 @@ open class Context {
 
     val applicationInfo: ApplicationInfo = ApplicationInfo()
 
-    fun getSharedPreferences(name: String, mode: Int): SharedPreferences {
-        return object : SharedPreferences {
-            override fun contains(key: String): Boolean {
-                when (key) {
-                    "firebase_data_collection_default_enabled" -> return false
-                    "auto_init" -> return false
-                    "firebase_messaging_auto_init_enabled" -> return false
-                    "fire-fst" -> return false
-                    "fire-global" -> return !FirebasePlatform.firebasePlatform.retrieve(key).isNullOrEmpty()
-                }
-                throw IllegalArgumentException(key)
-            }
-
-            override fun getString(key: String, defaultValue: String?): String? {
-                return when {
-                    key == "last-used-date" -> FirebasePlatform.firebasePlatform.retrieve(key) ?: defaultValue
-                    key.contains("|T|") -> null
-                    key.startsWith("com.google.firebase.auth.FIREBASE_USER") ->
-                        FirebasePlatform.firebasePlatform.retrieve(key) ?: defaultValue
-                    else -> throw IllegalArgumentException(key)
-                }
-            }
-
-            override fun getLong(key: String?, defaultValue: Long): Long {
-                when (key) {
-                    "fire-global" -> return FirebasePlatform.firebasePlatform.retrieve(key)?.toLong() ?: defaultValue
-                }
-                throw IllegalArgumentException(key)
-            }
-
-            override fun getAll(): Map<String, String> {
-                return emptyMap()
-            }
-
-            override fun edit(): Editor {
-                return object : Editor {
-                    override fun putLong(key: String?, value: Long): Editor {
-                        when (key) {
-                            "fire-global" -> FirebasePlatform.firebasePlatform.store(key, value.toString())
-                            else -> throw IllegalArgumentException(key)
-                        }
-                        return this
-                    }
-
-                    override fun putString(key: String?, value: String?): Editor {
-                        when (key) {
-                            "last-used-date" -> FirebasePlatform.firebasePlatform.store(key, value.toString())
-                            else -> if (key?.startsWith("com.google.firebase.auth.FIREBASE_USER") == true) {
-                                FirebasePlatform.firebasePlatform.store(key, value.toString())
-                            } else {
-                                throw IllegalArgumentException(key)
-                            }
-                        }
-                        return this
-                    }
-
-                    override fun commit(): Boolean {
-                        // Don't need to commit as changes are committed in the put method
-                        return true
-                    }
-
-                    override fun apply() {
-                        // Don't need to apply as changes are applied in the put method
-                    }
-                }
-            }
-        }
-    }
+    fun getSharedPreferences(name: String, mode: Int): SharedPreferences =
+        PreferencesFile.at(File(File(filesDir, "shared_prefs"), "${encodeFileName(name)}.json"))
 
     fun getSystemService(name: String): Any {
         when (name) {
@@ -133,10 +73,32 @@ open class Context {
         return File(System.getProperty("java.io.tmpdir"))
     }
 
-    fun getDatabasePath(name: String): File = FirebasePlatform.firebasePlatform.getDatabasePath(name)
+    // Creates the folder, because the SQLite driver cannot create a database in a missing folder
+    fun getDatabasePath(name: String): File =
+        FirebasePlatform.firebasePlatform.getDatabasePath(name).apply { parentFile?.mkdirs() }
+
+    val filesDir: File
+        get() = FirebasePlatform.firebasePlatform.getFilesDir().apply { mkdirs() }
+
+    fun openFileInput(name: String): FileInputStream = FileInputStream(fileStreamPath(name))
+
+    fun openFileOutput(name: String, mode: Int): FileOutputStream =
+        FileOutputStream(fileStreamPath(name), mode and MODE_APPEND != 0)
+
+    fun deleteFile(name: String): Boolean = fileStreamPath(name).delete()
+
+    private fun fileStreamPath(name: String): File {
+        require('/' !in name && File.separatorChar !in name) { "File $name contains a path separator" }
+        return File(filesDir, encodeFileName(name))
+    }
+
+    // URL-encodes the name so characters such as ':' in Firebase app IDs are valid on every OS
+    private fun encodeFileName(name: String): String = URLEncoder.encode(name, Charsets.UTF_8)
 
     companion object {
         @JvmStatic
         val CONNECTIVITY_SERVICE = "connectivity"
+
+        const val MODE_APPEND = 0x8000
     }
 }
