@@ -33,10 +33,11 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.longOrNull
 import okhttp3.Call
 import okhttp3.Callback
-import okhttp3.MediaType
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody
+import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
 import java.io.IOException
 import java.util.Base64
@@ -112,7 +113,7 @@ data class FirebaseUserImpl internal constructor(
 
     override fun delete(): Task<Void> {
         val source = TaskCompletionSource<Void>()
-        val body = RequestBody.create(FirebaseAuth.getInstance(app).json, JsonObject(mapOf("idToken" to JsonPrimitive(idToken))).toString())
+        val body = JsonObject(mapOf("idToken" to JsonPrimitive(idToken))).toString().toRequestBody(FirebaseAuth.getInstance(app).json)
         val request =
             Request
                 .Builder()
@@ -166,17 +167,14 @@ data class FirebaseUserImpl internal constructor(
     ): Task<Unit> {
         val source = TaskCompletionSource<Unit>()
         val body =
-            RequestBody.create(
-                FirebaseAuth.getInstance(app).json,
-                JsonObject(
-                    mapOf(
-                        "idToken" to JsonPrimitive(idToken),
-                        "email" to JsonPrimitive(email),
-                        "newEmail" to JsonPrimitive(newEmail),
-                        "requestType" to JsonPrimitive(OobRequestType.VERIFY_AND_CHANGE_EMAIL.name)
-                    )
-                ).toString()
-            )
+            JsonObject(
+                mapOf(
+                    "idToken" to JsonPrimitive(idToken),
+                    "email" to JsonPrimitive(email),
+                    "newEmail" to JsonPrimitive(newEmail),
+                    "requestType" to JsonPrimitive(OobRequestType.VERIFY_AND_CHANGE_EMAIL.name)
+                )
+            ).toString().toRequestBody(FirebaseAuth.getInstance(app).json)
         val request =
             Request
                 .Builder()
@@ -237,7 +235,7 @@ data class FirebaseUserImpl internal constructor(
 class FirebaseAuth constructor(
     val app: FirebaseApp
 ) : InternalAuthProvider {
-    internal val json = MediaType.parse("application/json; charset=utf-8")
+    internal val json = "application/json; charset=utf-8".toMediaType()
     internal val client: OkHttpClient =
         OkHttpClient
             .Builder()
@@ -276,7 +274,7 @@ class FirebaseAuth constructor(
                             createAuthInvalidUserException("accounts", request, response)
                         )
                     } else {
-                        if (response.body()?.use { it.string() }?.also { responseBody ->
+                        if (response.body?.use { it.string() }?.also { responseBody ->
                             user = setResult(responseBody)
                             source.setResult(AuthResult { user })
                         } == null
@@ -352,7 +350,7 @@ class FirebaseAuth constructor(
     fun signInAnonymously(): Task<AuthResult> {
         val source = enqueueAuthPost(
             url = "identitytoolkit.googleapis.com/v1/accounts:signUp",
-            body = RequestBody.create(json, JsonObject(mapOf("returnSecureToken" to JsonPrimitive(true))).toString()),
+            body = JsonObject(mapOf("returnSecureToken" to JsonPrimitive(true))).toString().toRequestBody(json),
             setResult = { responseBody ->
                 FirebaseUserImpl(app, jsonParser.parseToJsonElement(responseBody).jsonObject, isAnonymous = true)
             }
@@ -363,10 +361,7 @@ class FirebaseAuth constructor(
     fun signInWithCustomToken(customToken: String): Task<AuthResult> {
         val source = enqueueAuthPost(
             url = "www.googleapis.com/identitytoolkit/v3/relyingparty/verifyCustomToken",
-            body = RequestBody.create(
-                json,
-                JsonObject(mapOf("token" to JsonPrimitive(customToken), "returnSecureToken" to JsonPrimitive(true))).toString()
-            ),
+            body = JsonObject(mapOf("token" to JsonPrimitive(customToken), "returnSecureToken" to JsonPrimitive(true))).toString().toRequestBody(json),
             setResult = { responseBody ->
                 FirebaseUserImpl(app, jsonParser.parseToJsonElement(responseBody).jsonObject)
             }
@@ -378,10 +373,7 @@ class FirebaseAuth constructor(
         val source = TaskCompletionSource<AuthResult>()
 
         val body =
-            RequestBody.create(
-                json,
-                JsonObject(mapOf("idToken" to JsonPrimitive(user?.idToken))).toString()
-            )
+            JsonObject(mapOf("idToken" to JsonPrimitive(user?.idToken))).toString().toRequestBody(json)
         val request =
             Request
                 .Builder()
@@ -411,7 +403,7 @@ class FirebaseAuth constructor(
                         val newBody =
                             jsonParser
                                 .parseToJsonElement(
-                                    response.body()?.use { it.string() } ?: ""
+                                    response.body?.use { it.string() } ?: ""
                                 ).jsonObject
 
                         user = user?.copy(
@@ -436,16 +428,13 @@ class FirebaseAuth constructor(
             enqueueAuthPost(
                 url = "www.googleapis.com/identitytoolkit/v3/relyingparty/signupNewUser",
                 body =
-                RequestBody.create(
-                    json,
-                    JsonObject(
-                        mapOf(
-                            "email" to JsonPrimitive(email),
-                            "password" to JsonPrimitive(password),
-                            "returnSecureToken" to JsonPrimitive(true)
-                        )
-                    ).toString()
-                ),
+                JsonObject(
+                    mapOf(
+                        "email" to JsonPrimitive(email),
+                        "password" to JsonPrimitive(password),
+                        "returnSecureToken" to JsonPrimitive(true)
+                    )
+                ).toString().toRequestBody(json),
                 setResult = { responseBody ->
                     FirebaseUserImpl(
                         app = app,
@@ -464,16 +453,13 @@ class FirebaseAuth constructor(
             enqueueAuthPost(
                 url = "www.googleapis.com/identitytoolkit/v3/relyingparty/verifyPassword",
                 body =
-                RequestBody.create(
-                    json,
-                    JsonObject(
-                        mapOf(
-                            "email" to JsonPrimitive(email),
-                            "password" to JsonPrimitive(password),
-                            "returnSecureToken" to JsonPrimitive(true)
-                        )
-                    ).toString()
-                ),
+                JsonObject(
+                    mapOf(
+                        "email" to JsonPrimitive(email),
+                        "password" to JsonPrimitive(password),
+                        "returnSecureToken" to JsonPrimitive(true)
+                    )
+                ).toString().toRequestBody(json),
                 setResult = { responseBody ->
                     FirebaseUserImpl(app, jsonParser.parseToJsonElement(responseBody).jsonObject)
                 }
@@ -486,7 +472,7 @@ class FirebaseAuth constructor(
         request: Request,
         response: Response
     ): FirebaseAuthInvalidUserException {
-        val body = response.body()!!.use { it.string() }
+        val body = response.body!!.use { it.string() }
         val jsonObject = jsonParser.parseToJsonElement(body).jsonObject
 
         return FirebaseAuthInvalidUserException(
@@ -497,20 +483,20 @@ class FirebaseAuth constructor(
                 ?.contentOrNull
                 ?: "UNKNOWN_ERROR",
             "$action API returned an error, " +
-                "with url [${request.method()}] ${request.url()} ${request.body()} -- " +
-                "response [${response.code()}] ${response.message()} $body"
+                "with url [${request.method}] ${request.url} ${request.body} -- " +
+                "response [${response.code}] ${response.message} $body"
         )
     }
 
     fun signOut() {
         // cancel token refresher
         client
-            .dispatcher()
+            .dispatcher
             .queuedCalls()
             .find { it.request().tag() == REFRESH_TOKEN_TAG }
             ?.cancel() ?: {
             client
-                .dispatcher()
+                .dispatcher
                 .runningCalls()
                 .find { it.request().tag() == REFRESH_TOKEN_TAG }
                 ?.cancel()
@@ -548,15 +534,12 @@ class FirebaseAuth constructor(
     private fun enqueueRefreshTokenCall(user: FirebaseUserImpl): TaskCompletionSource<FirebaseUserImpl> {
         val source = TaskCompletionSource<FirebaseUserImpl>()
         val body =
-            RequestBody.create(
-                json,
-                JsonObject(
-                    mapOf(
-                        "refresh_token" to JsonPrimitive(user.refreshToken),
-                        "grant_type" to JsonPrimitive("refresh_token")
-                    )
-                ).toString()
-            )
+            JsonObject(
+                mapOf(
+                    "refresh_token" to JsonPrimitive(user.refreshToken),
+                    "grant_type" to JsonPrimitive("refresh_token")
+                )
+            ).toString().toRequestBody(json)
         val request =
             Request
                 .Builder()
@@ -579,7 +562,7 @@ class FirebaseAuth constructor(
                     call: Call,
                     response: Response
                 ) {
-                    val responseBody = response.body()?.use { it.string() }
+                    val responseBody = response.body?.use { it.string() }
 
                     if (!response.isSuccessful || responseBody == null) {
                         signOutAndThrowInvalidUserException(responseBody.orEmpty(), "token API returned an error: $body")
@@ -615,16 +598,13 @@ class FirebaseAuth constructor(
         val source = TaskCompletionSource<Unit>()
 
         val body =
-            RequestBody.create(
-                json,
-                JsonObject(
-                    mapOf(
-                        "idToken" to JsonPrimitive(user?.idToken),
-                        "email" to JsonPrimitive(email),
-                        "returnSecureToken" to JsonPrimitive(true)
-                    )
-                ).toString()
-            )
+            JsonObject(
+                mapOf(
+                    "idToken" to JsonPrimitive(user?.idToken),
+                    "email" to JsonPrimitive(email),
+                    "returnSecureToken" to JsonPrimitive(true)
+                )
+            ).toString().toRequestBody(json)
         val request =
             Request
                 .Builder()
@@ -659,7 +639,7 @@ class FirebaseAuth constructor(
                         val newBody =
                             jsonParser
                                 .parseToJsonElement(
-                                    response.body()?.use { it.string() } ?: ""
+                                    response.body?.use { it.string() } ?: ""
                                 ).jsonObject
 
                         user?.let { prev ->
@@ -689,17 +669,14 @@ class FirebaseAuth constructor(
         val source = TaskCompletionSource<Unit>()
 
         val body =
-            RequestBody.create(
-                json,
-                JsonObject(
-                    mapOf(
-                        "idToken" to JsonPrimitive(user?.idToken),
-                        "displayName" to JsonPrimitive(request.displayName),
-                        "photoUrl" to JsonPrimitive(request.photoUrl),
-                        "returnSecureToken" to JsonPrimitive(true)
-                    )
-                ).toString()
-            )
+            JsonObject(
+                mapOf(
+                    "idToken" to JsonPrimitive(user?.idToken),
+                    "displayName" to JsonPrimitive(request.displayName),
+                    "photoUrl" to JsonPrimitive(request.photoUrl),
+                    "returnSecureToken" to JsonPrimitive(true)
+                )
+            ).toString().toRequestBody(json)
         val req =
             Request
                 .Builder()
@@ -734,7 +711,7 @@ class FirebaseAuth constructor(
                         val newBody =
                             jsonParser
                                 .parseToJsonElement(
-                                    response.body()?.use { it.string() } ?: ""
+                                    response.body?.use { it.string() } ?: ""
                                 ).jsonObject
 
                         user?.let { prev ->

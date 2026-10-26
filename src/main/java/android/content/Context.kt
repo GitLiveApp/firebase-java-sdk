@@ -34,6 +34,9 @@ open class Context {
     val noBackupFilesDir: File
         get() = File(System.getProperty("java.io.tmpdir"))
 
+    val filesDir: File
+        get() = FirebasePlatform.firebasePlatform.getFilesDir()
+
     val classLoader: ClassLoader
         get() = ClassLoader.getSystemClassLoader()
 
