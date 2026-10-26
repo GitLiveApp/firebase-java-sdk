@@ -146,10 +146,6 @@ dependencies {
     aar(libs.google.firebase.config)
     aar(libs.google.firebase.installations)
     aar(libs.google.firebase.storage)
-    // firebase-common 22 keeps its heartbeat store in a preferences DataStore: the Android artifacts are KMP
-    // modules the attribute-less aar configuration does not pick a variant of, so they are named explicitly.
-    aar(libs.androidx.datastore.android)
-    aar(libs.androidx.datastore.preferences.android)
     // extracted aar dependencies
     // exclude lifecycle libs due to https://github.com/GitLiveApp/firebase-java-sdk/pull/15 - remove the exclude once the dependencies in the aars are updated to the required version
     api(fileTree(mapOf("dir" to "build/jar", "include" to listOf("*.jar"), "exclude" to listOf("lifecycle-*"))))
@@ -164,12 +160,17 @@ dependencies {
     implementation(libs.io.grpc.protobuf.lite)
     implementation(libs.io.grpc.stub)
     implementation(libs.androidx.collection)
-    // firebase-common 22 keeps its heartbeat store in a preferences DataStore; the KMP artifacts' JVM variants
+    // firebase-common 22 keeps its heartbeat store in a preferences DataStore (see com.google.firebase.datastorage.JavaDataStorage)
     implementation(libs.androidx.datastore.core)
     implementation(libs.androidx.datastore.preferences.core)
     implementation(libs.io.grpc.okhttp)
     implementation(libs.androidx.lifecycle.common)
     implementation(libs.androidx.lifecycle.viewmodel)
+    // Plain-jar dependencies of the bumped libraries that the aar configuration resolves but does not ship: Functions
+    // 22 returns a Reactive Streams Publisher from HttpsCallableReference.stream(), Firestore 26 evaluates regex and
+    // like filters with re2j.
+    api(libs.reactive.streams)
+    implementation(libs.re2j)
 }
 
 tasks.named("publishToMavenLocal").configure {
