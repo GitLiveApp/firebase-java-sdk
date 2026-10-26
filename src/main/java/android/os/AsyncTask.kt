@@ -1,6 +1,6 @@
 package android.os
 
-import kotlinx.coroutines.Dispatchers
+import com.google.firebase.FirebasePlatform
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -19,9 +19,9 @@ abstract class AsyncTask {
 
     fun execute(vararg params: Any): AsyncTask {
         GlobalScope.launch {
-            withContext(Dispatchers.Main) { onPreExecute() }
+            withContext(FirebasePlatform.firebasePlatform.mainDispatcher) { onPreExecute() }
             val result = doInBackground(*params)
-            withContext(Dispatchers.Main) { onPostExecute(result) }
+            withContext(FirebasePlatform.firebasePlatform.mainDispatcher) { onPostExecute(result) }
         }
         return this
     }

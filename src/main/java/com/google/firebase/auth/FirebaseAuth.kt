@@ -12,8 +12,6 @@ import com.google.firebase.FirebasePlatform
 import com.google.firebase.auth.internal.InternalAuthProvider
 import com.google.firebase.internal.InternalTokenResult
 import com.google.firebase.internal.api.FirebaseNoSignedInUserException
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
@@ -28,6 +26,7 @@ import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.int
 import kotlinx.serialization.json.intOrNull
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.longOrNull
@@ -66,6 +65,11 @@ data class FirebaseUserImpl internal constructor(
     override val email: String?,
     override val photoUrl: String?,
     override val displayName: String?,
+    override val phoneNumber: String? = null,
+    override val isEmailVerified: Boolean = false,
+    val lastSignInAt: Long,
+    val providerIds: List<String> = emptyList(),
+    val tokenIssuedAt: Long,
     @Transient
     private val urlFactory: UrlFactory = UrlFactory(app)
 ) : FirebaseUser() {
@@ -76,23 +80,41 @@ data class FirebaseUserImpl internal constructor(
         email: String? = data.getOrElse("email") { null }?.jsonPrimitive?.contentOrNull,
         photoUrl: String? = data.getOrElse("photoUrl") { null }?.jsonPrimitive?.contentOrNull,
         displayName: String? = data.getOrElse("displayName") { null }?.jsonPrimitive?.contentOrNull,
+        phoneNumber: String? = data["phoneNumber"]?.jsonPrimitive?.contentOrNull,
+        isEmailVerified: Boolean = (data["isEmailVerified"] ?: data["emailVerified"])?.jsonPrimitive?.booleanOrNull ?: false,
+        createdAt: Long = if ("uid" in data && "tokenIssuedAt" !in data) 0 else data["createdAt"]?.jsonPrimitive?.longOrNull ?: 0,
+        lastSignInAt: Long = (data["lastSignInAt"] ?: data["lastLoginAt"])?.jsonPrimitive?.longOrNull ?: if ("uid" in data) 0 else System.currentTimeMillis(),
+        existingProviderData: List<UserInfo> = emptyList(),
         urlFactory: UrlFactory = UrlFactory(app)
     ) : this(
         app = app,
         isAnonymous = isAnonymous,
         uid =
-        data["uid"]?.jsonPrimitive?.contentOrNull ?: data["user_id"]?.jsonPrimitive?.contentOrNull
-            ?: data["localId"]?.jsonPrimitive?.contentOrNull
-            ?: "",
+        responseUid(data, data["idToken"]?.jsonPrimitive?.contentOrNull ?: data.getValue("id_token").jsonPrimitive.content),
         idToken = data["idToken"]?.jsonPrimitive?.contentOrNull ?: data.getValue("id_token").jsonPrimitive.content,
         refreshToken = data["refreshToken"]?.jsonPrimitive?.contentOrNull ?: data.getValue("refresh_token").jsonPrimitive.content,
         expiresIn = data["expiresIn"]?.jsonPrimitive?.intOrNull ?: data.getValue("expires_in").jsonPrimitive.int,
-        createdAt = data["createdAt"]?.jsonPrimitive?.longOrNull ?: System.currentTimeMillis(),
+        createdAt = createdAt,
         email = email,
         photoUrl = photoUrl ?: data["photo_url"]?.jsonPrimitive?.contentOrNull,
         displayName = displayName ?: data["display_name"]?.jsonPrimitive?.contentOrNull,
+        phoneNumber = phoneNumber,
+        isEmailVerified = isEmailVerified,
+        lastSignInAt = lastSignInAt,
+        providerIds = resolveProviderIds(data, existingProviderData, email, phoneNumber, isAnonymous),
+        // Old persisted users mixed account creation and token time; refresh rather than extend their token lifetime.
+        tokenIssuedAt = data["tokenIssuedAt"]?.jsonPrimitive?.longOrNull ?: if ("uid" in data) 0 else System.currentTimeMillis(),
         urlFactory = urlFactory
     )
+
+    override val metadata: FirebaseUserMetadata
+        get() = FirebaseUserMetadata(createdAt, lastSignInAt)
+
+    override val providerData: List<UserInfo>
+        get() = providerIds.map { provider -> UserInfo(displayName, email, phoneNumber, photoUrl, provider, uid) }
+
+    override val providerId: String
+        get() = "firebase"
 
     val claims: Map<String, Any?> by lazy {
         jsonParser
@@ -218,6 +240,9 @@ data class FirebaseUserImpl internal constructor(
 
     override fun updateProfile(request: UserProfileChangeRequest): Task<Unit> = FirebaseAuth.getInstance(app).updateProfile(request)
 
+    override fun linkWithCredential(credential: AuthCredential): Task<AuthResult> =
+        FirebaseAuth.getInstance(app).linkWithCredential(this, credential)
+
     fun updateProfile(
         displayName: String?,
         photoUrl: String?
@@ -230,6 +255,40 @@ data class FirebaseUserImpl internal constructor(
                 .build()
         return FirebaseAuth.getInstance(app).updateProfile(request)
     }
+}
+
+private fun resolveProviderIds(
+    data: JsonObject,
+    existingProviderData: List<UserInfo>,
+    email: String?,
+    phoneNumber: String?,
+    isAnonymous: Boolean
+): List<String> {
+    val stored =
+        data["providerIds"]
+            ?.jsonArray
+            ?.mapNotNull { it.jsonPrimitive.contentOrNull }
+            .orEmpty()
+    val nested =
+        data["providerUserInfo"]
+            ?.jsonArray
+            ?.mapNotNull { it.jsonObject["providerId"]?.jsonPrimitive?.contentOrNull }
+            .orEmpty()
+    val direct = listOfNotNull(data["providerId"]?.jsonPrimitive?.contentOrNull)
+    val explicit = existingProviderData.map { it.providerId } + stored + nested + direct
+    val inferred =
+        if (explicit.isEmpty()) {
+            when {
+                isAnonymous -> emptyList()
+                phoneNumber != null -> listOf("phone")
+                email != null -> listOf("password")
+                else -> emptyList()
+            }
+        } else {
+            emptyList()
+        }
+    val phoneProvider = if (!isAnonymous && phoneNumber != null) listOf("phone") else emptyList()
+    return (explicit + inferred + phoneProvider).distinct()
 }
 
 class FirebaseAuth constructor(
@@ -269,20 +328,24 @@ class FirebaseAuth constructor(
                     call: Call,
                     response: Response
                 ) {
-                    if (!response.isSuccessful) {
-                        source.setException(
-                            createAuthInvalidUserException("accounts", request, response)
-                        )
-                    } else {
-                        if (response.body?.use { it.string() }?.also { responseBody ->
-                            user = setResult(responseBody)
-                            source.setResult(AuthResult { user })
-                        } == null
-                        ) {
+                    try {
+                        if (!response.isSuccessful) {
                             source.setException(
                                 createAuthInvalidUserException("accounts", request, response)
                             )
+                        } else {
+                            val responseBody = response.body?.use { it.string() }
+                            if (responseBody == null) {
+                                source.setException(
+                                    FirebaseAuthInvalidUserException("UNKNOWN_ERROR", "accounts API returned an empty response.")
+                                )
+                            } else {
+                                user = setResult(responseBody)
+                                source.setResult(AuthResult { user })
+                            }
                         }
+                    } catch (exception: Exception) {
+                        source.setException(exception)
                     }
                 }
             }
@@ -326,7 +389,7 @@ class FirebaseAuth constructor(
                     FirebasePlatform.firebasePlatform.store(app.key, jsonParser.encodeToString(FirebaseUserImpl.serializer(), value))
                 }
 
-                GlobalScope.launch(Dispatchers.Main) {
+                FirebasePlatform.firebasePlatform.mainScope.launch {
                     if (prev?.uid != value?.uid) {
                         authStateListeners.forEach { l -> l.onAuthStateChanged(this@FirebaseAuth) }
                     }
@@ -352,7 +415,7 @@ class FirebaseAuth constructor(
             url = "identitytoolkit.googleapis.com/v1/accounts:signUp",
             body = JsonObject(mapOf("returnSecureToken" to JsonPrimitive(true))).toString().toRequestBody(json),
             setResult = { responseBody ->
-                FirebaseUserImpl(app, jsonParser.parseToJsonElement(responseBody).jsonObject, isAnonymous = true)
+                FirebaseUserImpl(app, jsonParser.parseToJsonElement(responseBody).jsonObject, isAnonymous = true, urlFactory = urlFactory)
             }
         )
         return source.task
@@ -363,10 +426,10 @@ class FirebaseAuth constructor(
             url = "www.googleapis.com/identitytoolkit/v3/relyingparty/verifyCustomToken",
             body = JsonObject(mapOf("token" to JsonPrimitive(customToken), "returnSecureToken" to JsonPrimitive(true))).toString().toRequestBody(json),
             setResult = { responseBody ->
-                FirebaseUserImpl(app, jsonParser.parseToJsonElement(responseBody).jsonObject)
+                FirebaseUserImpl(app, jsonParser.parseToJsonElement(responseBody).jsonObject, urlFactory = urlFactory)
             }
         )
-        return source.task.continueWithTask { updateByGetAccountInfo() }
+        return source.task.onSuccessTask { updateByGetAccountInfo() }
     }
 
     private fun updateByGetAccountInfo(): Task<AuthResult> {
@@ -400,19 +463,21 @@ class FirebaseAuth constructor(
                             createAuthInvalidUserException("updateWithAccountInfo", request, response)
                         )
                     } else {
-                        val newBody =
-                            jsonParser
-                                .parseToJsonElement(
-                                    response.body?.use { it.string() } ?: ""
-                                ).jsonObject
-
-                        user = user?.copy(
-                            createdAt = newBody["createdAt"]?.jsonPrimitive?.longOrNull ?: user!!.createdAt,
-                            email = newBody["email"]?.jsonPrimitive?.contentOrNull ?: user!!.email,
-                            photoUrl = newBody["photoUrl"]?.jsonPrimitive?.contentOrNull ?: user!!.photoUrl,
-                            displayName = newBody["displayName"]?.jsonPrimitive?.contentOrNull ?: user!!.displayName
-                        )
-                        source.setResult(AuthResult { user })
+                        try {
+                            val data = jsonParser.parseToJsonElement(response.body?.use { it.string() } ?: "").jsonObject
+                            val profile = accountProfile(data)
+                            val previous = requireNotNull(user) { "No user for account lookup" }
+                            user = previous.copy(
+                                uid = responseUid(data, previous.idToken),
+                                createdAt = profile["createdAt"]?.jsonPrimitive?.longOrNull ?: previous.createdAt,
+                                email = profile["email"]?.jsonPrimitive?.contentOrNull ?: previous.email,
+                                photoUrl = profile["photoUrl"]?.jsonPrimitive?.contentOrNull ?: previous.photoUrl,
+                                displayName = profile["displayName"]?.jsonPrimitive?.contentOrNull ?: previous.displayName
+                            )
+                            source.setResult(AuthResult { user })
+                        } catch (exception: Exception) {
+                            source.setException(exception)
+                        }
                     }
                 }
             }
@@ -438,7 +503,8 @@ class FirebaseAuth constructor(
                 setResult = { responseBody ->
                     FirebaseUserImpl(
                         app = app,
-                        data = jsonParser.parseToJsonElement(responseBody).jsonObject
+                        data = jsonParser.parseToJsonElement(responseBody).jsonObject,
+                        urlFactory = urlFactory
                     )
                 }
             )
@@ -461,7 +527,7 @@ class FirebaseAuth constructor(
                     )
                 ).toString().toRequestBody(json),
                 setResult = { responseBody ->
-                    FirebaseUserImpl(app, jsonParser.parseToJsonElement(responseBody).jsonObject)
+                    FirebaseUserImpl(app, jsonParser.parseToJsonElement(responseBody).jsonObject, urlFactory = urlFactory)
                 }
             )
         return source.task
@@ -472,19 +538,23 @@ class FirebaseAuth constructor(
         request: Request,
         response: Response
     ): FirebaseAuthInvalidUserException {
-        val body = response.body!!.use { it.string() }
-        val jsonObject = jsonParser.parseToJsonElement(body).jsonObject
+        val body = response.body?.use { it.string() }.orEmpty()
+        val errorCode =
+            runCatching {
+                jsonParser
+                    .parseToJsonElement(body)
+                    .jsonObject["error"]
+                    ?.jsonObject
+                    ?.get("message")
+                    ?.jsonPrimitive
+                    ?.contentOrNull
+            }.getOrNull() ?: "UNKNOWN_ERROR"
 
         return FirebaseAuthInvalidUserException(
-            jsonObject["error"]
-                ?.jsonObject
-                ?.get("message")
-                ?.jsonPrimitive
-                ?.contentOrNull
-                ?: "UNKNOWN_ERROR",
-            "$action API returned an error, " +
-                "with url [${request.method}] ${request.url} ${request.body} -- " +
-                "response [${response.code}] ${response.message} $body"
+            errorCode,
+            "$errorCode: $action API returned an error, " +
+                "with endpoint [${request.method}] ${request.url.encodedPath} -- " +
+                "response [${response.code}] ${response.message}"
         )
     }
 
@@ -507,13 +577,13 @@ class FirebaseAuth constructor(
     override fun getAccessToken(forceRefresh: Boolean): Task<GetTokenResult> {
         val user = user ?: return Tasks.forException(FirebaseNoSignedInUserException("Please sign in before trying to get a token."))
 
-        if (!forceRefresh && user.createdAt + user.expiresIn * 1000 - 5 * 60 * 1000 > System.currentTimeMillis()) {
+        if (!forceRefresh && user.tokenIssuedAt + user.expiresIn * 1000L - 5 * 60 * 1000 > System.currentTimeMillis()) {
 //            Log.i("FirebaseAuth", "returning existing token for user ${user.uid} from getAccessToken")
             return Tasks.forResult(GetTokenResult(user.idToken, user.claims))
         }
-//        Log.i("FirebaseAuth", "Refreshing access token forceRefresh=$forceRefresh createdAt=${user.createdAt} expiresIn=${user.expiresIn}")
+//        Log.i("FirebaseAuth", "Refreshing access token forceRefresh=$forceRefresh tokenIssuedAt=${user.tokenIssuedAt} expiresIn=${user.expiresIn}")
         val source = TaskCompletionSource<GetTokenResult>()
-        refreshToken(user, source) { GetTokenResult(it.idToken, user.claims) }
+        refreshToken(user, source) { GetTokenResult(it.idToken, it.claims) }
         return source.task
     }
 
@@ -565,10 +635,27 @@ class FirebaseAuth constructor(
                     val responseBody = response.body?.use { it.string() }
 
                     if (!response.isSuccessful || responseBody == null) {
-                        signOutAndThrowInvalidUserException(responseBody.orEmpty(), "token API returned an error: $body")
+                        signOutAndThrowInvalidUserException(
+                            responseBody.orEmpty(),
+                            "token API returned an error"
+                        )
                     } else {
                         jsonParser.parseToJsonElement(responseBody).jsonObject.apply {
-                            val newUser = FirebaseUserImpl(app, this, user.isAnonymous, user.email)
+                            val newUser =
+                                FirebaseUserImpl(
+                                    app = app,
+                                    data = this,
+                                    isAnonymous = user.isAnonymous,
+                                    email = user.email,
+                                    photoUrl = user.photoUrl,
+                                    displayName = user.displayName,
+                                    phoneNumber = user.phoneNumber,
+                                    isEmailVerified = user.isEmailVerified,
+                                    createdAt = user.createdAt,
+                                    lastSignInAt = user.lastSignInAt,
+                                    existingProviderData = user.providerData,
+                                    urlFactory = urlFactory
+                                )
                             if (newUser.claims["aud"] != app.options.projectId) {
                                 signOutAndThrowInvalidUserException(
                                     newUser.claims.toString(),
@@ -654,7 +741,13 @@ class FirebaseAuth constructor(
                                     createdAt = prev.createdAt,
                                     email = newBody["newEmail"]?.jsonPrimitive?.contentOrNull ?: prev.email,
                                     photoUrl = newBody["photoUrl"]?.jsonPrimitive?.contentOrNull ?: prev.photoUrl,
-                                    displayName = newBody["displayName"]?.jsonPrimitive?.contentOrNull ?: prev.displayName
+                                    displayName = newBody["displayName"]?.jsonPrimitive?.contentOrNull ?: prev.displayName,
+                                    phoneNumber = prev.phoneNumber,
+                                    isEmailVerified = prev.isEmailVerified,
+                                    lastSignInAt = prev.lastSignInAt,
+                                    providerIds = prev.providerIds,
+                                    tokenIssuedAt = if (newBody["idToken"]?.jsonPrimitive?.contentOrNull != null) System.currentTimeMillis() else prev.tokenIssuedAt,
+                                    urlFactory = urlFactory
                                 )
                         }
                         source.setResult(null)
@@ -726,7 +819,13 @@ class FirebaseAuth constructor(
                                     createdAt = prev.createdAt,
                                     email = newBody["newEmail"]?.jsonPrimitive?.contentOrNull ?: prev.email,
                                     photoUrl = newBody["photoUrl"]?.jsonPrimitive?.contentOrNull ?: prev.photoUrl,
-                                    displayName = newBody["displayName"]?.jsonPrimitive?.contentOrNull ?: prev.displayName
+                                    displayName = newBody["displayName"]?.jsonPrimitive?.contentOrNull ?: prev.displayName,
+                                    phoneNumber = prev.phoneNumber,
+                                    isEmailVerified = prev.isEmailVerified,
+                                    lastSignInAt = prev.lastSignInAt,
+                                    providerIds = prev.providerIds,
+                                    tokenIssuedAt = if (newBody["idToken"]?.jsonPrimitive?.contentOrNull != null) System.currentTimeMillis() else prev.tokenIssuedAt,
+                                    urlFactory = urlFactory
                                 )
                         }
                         source.setResult(null)
@@ -741,7 +840,7 @@ class FirebaseAuth constructor(
 
     override fun addIdTokenListener(listener: com.google.firebase.auth.internal.IdTokenListener) {
         internalIdTokenListeners.addIfAbsent(listener)
-        GlobalScope.launch(Dispatchers.Main) {
+        FirebasePlatform.firebasePlatform.mainScope.launch {
             listener.onIdTokenChanged(InternalTokenResult(user?.idToken))
         }
     }
@@ -753,7 +852,7 @@ class FirebaseAuth constructor(
     @Synchronized
     fun addAuthStateListener(listener: AuthStateListener) {
         authStateListeners.addIfAbsent(listener)
-        GlobalScope.launch(Dispatchers.Main) {
+        FirebasePlatform.firebasePlatform.mainScope.launch {
             listener.onAuthStateChanged(this@FirebaseAuth)
         }
     }
@@ -775,7 +874,7 @@ class FirebaseAuth constructor(
 
     fun addIdTokenListener(listener: IdTokenListener) {
         idTokenListeners.addIfAbsent(listener)
-        GlobalScope.launch(Dispatchers.Main) {
+        FirebasePlatform.firebasePlatform.mainScope.launch {
             listener.onIdTokenChanged(this@FirebaseAuth)
         }
     }
@@ -786,10 +885,112 @@ class FirebaseAuth constructor(
 
     fun useEmulator(host: String, port: Int) {
         urlFactory = UrlFactory(app, "http://$host:$port/")
+        user = user?.copy(urlFactory = urlFactory)
     }
 
     fun sendPasswordResetEmail(email: String, settings: ActionCodeSettings?): Task<Unit> = TODO()
-    fun signInWithCredential(authCredential: AuthCredential): Task<AuthResult> = TODO()
+    fun signInWithCredential(authCredential: AuthCredential): Task<AuthResult> =
+        enqueueCredentialAuthPost(authCredential, currentIdToken = null) { responseBody ->
+            FirebaseUserImpl(
+                app = app,
+                data = jsonParser.parseToJsonElement(responseBody).jsonObject,
+                urlFactory = urlFactory
+            )
+        }
+
+    internal fun linkWithCredential(
+        currentUser: FirebaseUserImpl,
+        authCredential: AuthCredential
+    ): Task<AuthResult> {
+        val signedInUser = user
+        if (signedInUser == null || signedInUser.uid != currentUser.uid) {
+            return Tasks.forException(
+                FirebaseAuthInvalidUserException(
+                    "ERROR_USER_MISMATCH",
+                    "The supplied user is not the currently signed-in user."
+                )
+            )
+        }
+
+        return enqueueCredentialAuthPost(authCredential, currentIdToken = signedInUser.idToken) { responseBody ->
+            val data = jsonParser.parseToJsonElement(responseBody).jsonObject
+            val linkedUser =
+                FirebaseUserImpl(
+                    app = app,
+                    data = data,
+                    isAnonymous = false,
+                    email = data["email"]?.jsonPrimitive?.contentOrNull ?: signedInUser.email,
+                    photoUrl = data["photoUrl"]?.jsonPrimitive?.contentOrNull ?: signedInUser.photoUrl,
+                    displayName = data["displayName"]?.jsonPrimitive?.contentOrNull ?: signedInUser.displayName,
+                    phoneNumber = data["phoneNumber"]?.jsonPrimitive?.contentOrNull ?: signedInUser.phoneNumber,
+                    isEmailVerified = data["emailVerified"]?.jsonPrimitive?.booleanOrNull ?: signedInUser.isEmailVerified,
+                    createdAt = signedInUser.createdAt,
+                    lastSignInAt = signedInUser.lastSignInAt,
+                    existingProviderData = signedInUser.providerData,
+                    urlFactory = urlFactory
+                )
+            if (linkedUser.uid != signedInUser.uid) {
+                throw FirebaseAuthInvalidUserException(
+                    "ERROR_USER_MISMATCH",
+                    "The linked credential returned a different Firebase user."
+                )
+            }
+            linkedUser
+        }
+    }
+
+    private fun enqueueCredentialAuthPost(
+        authCredential: AuthCredential,
+        currentIdToken: String?,
+        setResult: (responseBody: String) -> FirebaseUserImpl
+    ): Task<AuthResult> =
+        if (authCredential is PhoneAuthCredential) {
+            enqueuePhoneAuthPost(authCredential, currentIdToken, setResult)
+        } else {
+            enqueueIdpAuthPost(authCredential, currentIdToken, setResult)
+        }
+
+    private fun enqueueIdpAuthPost(
+        authCredential: AuthCredential,
+        currentIdToken: String?,
+        setResult: (responseBody: String) -> FirebaseUserImpl
+    ): Task<AuthResult> {
+        val values =
+            linkedMapOf<String, JsonElement>(
+                "postBody" to JsonPrimitive(authCredential.toIdpPostBody()),
+                "requestUri" to JsonPrimitive("http://localhost"),
+                "returnIdpCredential" to JsonPrimitive(true),
+                "returnSecureToken" to JsonPrimitive(true)
+            )
+        if (currentIdToken != null) {
+            values["idToken"] = JsonPrimitive(currentIdToken)
+        }
+        return enqueueAuthPost(
+            url = "identitytoolkit.googleapis.com/v1/accounts:signInWithIdp",
+            body = JsonObject(values).toString().toRequestBody(json),
+            setResult = setResult
+        ).task
+    }
+
+    private fun enqueuePhoneAuthPost(
+        credential: PhoneAuthCredential,
+        currentIdToken: String?,
+        setResult: (responseBody: String) -> FirebaseUserImpl
+    ): Task<AuthResult> {
+        val values =
+            linkedMapOf<String, JsonElement>(
+                "sessionInfo" to JsonPrimitive(credential.verificationId),
+                "code" to JsonPrimitive(credential.smsCode)
+            )
+        if (currentIdToken != null) {
+            values["idToken"] = JsonPrimitive(currentIdToken)
+        }
+        return enqueueAuthPost(
+            url = "identitytoolkit.googleapis.com/v1/accounts:signInWithPhoneNumber",
+            body = JsonObject(values).toString().toRequestBody(json),
+            setResult = setResult
+        ).task
+    }
     fun checkActionCode(code: String): Task<ActionCodeResult> = TODO()
 
     fun confirmPasswordReset(

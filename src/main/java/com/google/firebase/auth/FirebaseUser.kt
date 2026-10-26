@@ -24,14 +24,14 @@ abstract class FirebaseUser {
 
     abstract fun updateProfile(request: UserProfileChangeRequest): Task<Unit>
 
-    val phoneNumber: String get() = TODO()
-    val isEmailVerified: Boolean get() = TODO()
-    val metadata: FirebaseUserMetadata get() = TODO()
+    abstract val phoneNumber: String?
+    abstract val isEmailVerified: Boolean
+    abstract val metadata: FirebaseUserMetadata
     val multiFactor: MultiFactor get() = TODO()
-    val providerData: List<UserInfo> get() = TODO()
-    val providerId: String get() = TODO()
+    abstract val providerData: List<UserInfo>
+    abstract val providerId: String
 
-    fun linkWithCredential(credential: AuthCredential): Task<AuthResult> = TODO()
+    abstract fun linkWithCredential(credential: AuthCredential): Task<AuthResult>
 
     fun sendEmailVerification(): Task<Unit> = TODO()
 
