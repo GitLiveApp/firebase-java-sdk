@@ -177,6 +177,17 @@ class PreferencesFileTest {
     }
 
     @Test
+    fun `clearing an existing file before reading it empties the file`() {
+        file("cleared").parentFile.mkdirs()
+        file("cleared").writeText("""{"num_failed_fetches":{"int":3}}""")
+
+        assertTrue(prefs("cleared").edit().clear().commit())
+
+        assertEquals(emptyMap<String, Any>(), Json.parseToJsonElement(file("cleared").readText()).jsonObject)
+        assertEquals(0, prefs("cleared").getInt("num_failed_fetches", 0))
+    }
+
+    @Test
     fun `commits that change nothing do not write the file`() {
         val prefs = prefs("unchanged")
 

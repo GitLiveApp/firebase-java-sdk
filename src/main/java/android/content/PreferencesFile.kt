@@ -75,7 +75,9 @@ internal class PreferencesFile private constructor(private val file: File) : Sha
 
     private fun save(changes: Map<String, Any?>, clear: Boolean): Boolean {
         synchronized(this) {
-            val updated = if (clear) mutableMapOf() else values().toMutableMap()
+            // Loading first keeps storedValues true to the file, so clearing an unread file still writes it
+            val current = values()
+            val updated = if (clear) mutableMapOf() else current.toMutableMap()
             changes.forEach { (key, value) -> if (value == null) updated.remove(key) else updated[key] = value }
             // As on Android, memory is updated first, so the new values stay readable if the write fails
             loadedValues = updated

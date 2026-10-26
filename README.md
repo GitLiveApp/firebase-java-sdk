@@ -128,7 +128,7 @@ The following libraries are available for the various Firebase products.
 | [Cloud Firestore](https://firebase.google.com/docs/firestore)                                     | `26.6.0`                |
 | [Realtime Database](https://firebase.google.com/docs/database)                                    | `22.0.1`                |
 | [Cloud Functions](https://firebase.google.com/docs/functions)                                     | `22.1.1`                |
-| [Remote Config](https://firebase.google.com/docs/remote-config)                                   | `23.1.0`                |
+| [Remote Config](https://firebase.google.com/docs/remote-config)                                   | `23.1.0`[^2]            |
 | [Installations](https://firebase.google.com/docs/projects/manage-installations)                   | `19.1.2`                |
 
 [^1]: Google has not open-sourced the Firebase Auth implementation for Android so a basic implementation using the Rest API is provided.
