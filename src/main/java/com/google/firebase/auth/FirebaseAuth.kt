@@ -1,5 +1,6 @@
 package com.google.firebase.auth
 
+import android.app.Activity
 import android.net.Uri
 import android.util.Log
 import com.google.android.gms.tasks.Task
@@ -13,7 +14,6 @@ import com.google.firebase.auth.internal.InternalAuthProvider
 import com.google.firebase.internal.InternalTokenResult
 import com.google.firebase.internal.api.FirebaseNoSignedInUserException
 import kotlinx.coroutines.launch
-import android.app.Activity
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
@@ -192,55 +192,14 @@ data class FirebaseUserImpl internal constructor(
     override fun verifyBeforeUpdateEmail(
         newEmail: String,
         actionCodeSettings: ActionCodeSettings?
-    ): Task<Unit> {
-        val source = TaskCompletionSource<Unit>()
-        val body =
-            JsonObject(
-                mapOf(
-                    "idToken" to JsonPrimitive(idToken),
-                    "email" to JsonPrimitive(email),
-                    "newEmail" to JsonPrimitive(newEmail),
-                    "requestType" to JsonPrimitive(OobRequestType.VERIFY_AND_CHANGE_EMAIL.name)
-                ) + actionCodeSettings?.toRequestFields().orEmpty()
-            ).toString().toRequestBody(FirebaseAuth.getInstance(app).json)
-        val request =
-            Request
-                .Builder()
-                .url(urlFactory.buildUrl("identitytoolkit.googleapis.com/v1/accounts:sendOobCode"))
-                .post(body)
-                .build()
-        FirebaseAuth.getInstance(app).client.newCall(request).enqueue(
-            object : Callback {
-                override fun onFailure(
-                    call: Call,
-                    e: IOException
-                ) {
-                    source.setException(FirebaseException(e.toString(), e))
-                    e.printStackTrace()
-                }
-
-                @Throws(IOException::class)
-                override fun onResponse(
-                    call: Call,
-                    response: Response
-                ) {
-                    if (!response.isSuccessful) {
-                        FirebaseAuth.getInstance(app).signOut()
-                        source.setException(
-                            FirebaseAuth.getInstance(app).createAuthInvalidUserException(
-                                "verifyEmail",
-                                request,
-                                response
-                            )
-                        )
-                    } else {
-                        source.setResult(null)
-                    }
-                }
-            }
+    ): Task<Void> =
+        FirebaseAuth.getInstance(app).sendOobCode(
+            "verifyEmail",
+            this,
+            OobRequestType.VERIFY_AND_CHANGE_EMAIL,
+            mapOf("email" to JsonPrimitive(email), "newEmail" to JsonPrimitive(newEmail)),
+            actionCodeSettings
         )
-        return source.task
-    }
 
     override fun getIdToken(forceRefresh: Boolean) = FirebaseAuth.getInstance(app).getAccessToken(forceRefresh)
 
@@ -249,15 +208,10 @@ data class FirebaseUserImpl internal constructor(
     override fun linkWithCredential(credential: AuthCredential): Task<AuthResult> =
         FirebaseAuth.getInstance(app).linkWithCredential(this, credential)
 
-    override fun sendEmailVerification(actionCodeSettings: ActionCodeSettings?): Task<Unit> =
-        FirebaseAuth.getInstance(app).sendOobCode(
-            "sendEmailVerification",
-            OobRequestType.VERIFY_EMAIL,
-            mapOf("idToken" to JsonPrimitive(idToken)),
-            actionCodeSettings
-        )
+    override fun sendEmailVerification(actionCodeSettings: ActionCodeSettings?): Task<Void> =
+        FirebaseAuth.getInstance(app).sendOobCode("sendEmailVerification", this, OobRequestType.VERIFY_EMAIL, emptyMap(), actionCodeSettings)
 
-    override fun updatePhoneNumber(credential: PhoneAuthCredential): Task<Unit> =
+    override fun updatePhoneNumber(credential: PhoneAuthCredential): Task<Void> =
         FirebaseAuth.getInstance(app).updatePhoneNumber(this, credential)
 
     fun updateProfile(
@@ -453,7 +407,9 @@ class FirebaseAuth constructor(
                 FirebaseUserImpl(app, jsonParser.parseToJsonElement(responseBody).jsonObject, urlFactory = urlFactory)
             }
         )
-        return source.task.onSuccessTask { updateByGetAccountInfo() }
+        return source.task.onSuccessTask { signIn ->
+            updateByGetAccountInfo().onSuccessTask { Tasks.forResult<AuthResult>(AuthResultImpl(user, signIn?.additionalUserInfo, signIn?.credential)) }
+        }
     }
 
     private fun updateByGetAccountInfo(): Task<AuthResult> {
@@ -912,23 +868,40 @@ class FirebaseAuth constructor(
         user = user?.copy(urlFactory = urlFactory)
     }
 
-    fun sendPasswordResetEmail(email: String): Task<Unit> = sendPasswordResetEmail(email, null)
+    fun sendPasswordResetEmail(email: String): Task<Void> = sendPasswordResetEmail(email, null)
 
-    fun sendPasswordResetEmail(email: String, settings: ActionCodeSettings?): Task<Unit> =
-        sendOobCode("sendPasswordResetEmail", OobRequestType.PASSWORD_RESET, mapOf("email" to JsonPrimitive(email)), settings)
+    fun sendPasswordResetEmail(email: String, settings: ActionCodeSettings?): Task<Void> =
+        sendOobCode("sendPasswordResetEmail", null, OobRequestType.PASSWORD_RESET, mapOf("email" to JsonPrimitive(email)), settings)
 
-    /** Posts [fields] with [type] to `accounts:sendOobCode`, the request behind every action email. */
+    /**
+     * Posts [fields] with [type] to `accounts:sendOobCode`, the request behind every action email, with [user]'s ID
+     * token (refreshed if it has expired) when the action concerns a signed-in account.
+     */
     internal fun sendOobCode(
         action: String,
+        user: FirebaseUserImpl?,
         type: OobRequestType,
         fields: Map<String, JsonElement>,
         settings: ActionCodeSettings?
-    ): Task<Unit> =
-        postJson(
-            action,
-            "identitytoolkit.googleapis.com/v1/accounts:sendOobCode",
-            JsonObject(mapOf("requestType" to JsonPrimitive(type.name)) + fields + settings?.toRequestFields().orEmpty())
-        ).onSuccessTask { Tasks.forResult(Unit) }
+    ): Task<Void> {
+        val body = mapOf("requestType" to JsonPrimitive(type.name)) + fields + settings?.toRequestFields().orEmpty()
+        val url = "identitytoolkit.googleapis.com/v1/accounts:sendOobCode"
+        val sent =
+            if (user == null) {
+                postJson(action, url, JsonObject(body))
+            } else {
+                freshIdToken(user).onSuccessTask { idToken -> postJson(action, url, JsonObject(body + ("idToken" to JsonPrimitive(idToken)))) }
+            }
+        return sent.onSuccessTask { Tasks.forResult<Void>(null) }
+    }
+
+    /** [user]'s ID token, refreshed through [getAccessToken] when it is the current user's and has expired. */
+    internal fun freshIdToken(user: FirebaseUserImpl): Task<String> =
+        if (this.user?.uid == user.uid) {
+            getAccessToken(false).onSuccessTask { result -> Tasks.forResult(requireNotNull(result?.token) { "No ID token for the current user" }) }
+        } else {
+            Tasks.forResult(user.idToken)
+        }
 
     /**
      * Posts [body] to [url] and completes with the parsed response, or with the error [createAuthInvalidUserException]
@@ -1006,7 +979,8 @@ class FirebaseAuth constructor(
     internal fun updatePhoneNumber(
         currentUser: FirebaseUserImpl,
         credential: PhoneAuthCredential
-    ): Task<Unit> = linkWithCredential(currentUser, credential).onSuccessTask { Tasks.forResult(Unit) }
+    ): Task<Void> = linkWithCredential(currentUser, credential).onSuccessTask { Tasks.forResult<Void>(null) }
+
     fun signInWithCredential(authCredential: AuthCredential): Task<AuthResult> =
         enqueueCredentialAuthPost(authCredential, currentIdToken = null) { responseBody ->
             FirebaseUserImpl(
@@ -1027,6 +1001,13 @@ class FirebaseAuth constructor(
                     "ERROR_USER_MISMATCH",
                     "The supplied user is not the currently signed-in user."
                 )
+            )
+        }
+        // Linking a password to an account that has one would replace it through accounts:update.
+        if (authCredential is EmailAuthCredential && authCredential.password != null && EmailAuthProvider.PROVIDER_ID in signedInUser.providerIds) {
+            return Tasks.forException(
+                FirebaseAuthUserCollisionException("ERROR_PROVIDER_ALREADY_LINKED", "User has already been linked to the given provider.")
+                    .withDetails(signedInUser.email, null)
             )
         }
 
@@ -1109,6 +1090,7 @@ class FirebaseAuth constructor(
             setResult = setResult
         ).task
     }
+
     /** What an action code is for and which account it concerns, from `accounts:resetPassword` called with the code alone. */
     fun checkActionCode(code: String): Task<ActionCodeResult> =
         postJson("checkActionCode", "identitytoolkit.googleapis.com/v1/accounts:resetPassword", JsonObject(mapOf("oobCode" to JsonPrimitive(code))))
@@ -1117,22 +1099,28 @@ class FirebaseAuth constructor(
     fun confirmPasswordReset(
         code: String,
         newPassword: String
-    ): Task<Unit> =
+    ): Task<Void> =
         postJson(
             "confirmPasswordReset",
             "identitytoolkit.googleapis.com/v1/accounts:resetPassword",
             JsonObject(mapOf("oobCode" to JsonPrimitive(code), "newPassword" to JsonPrimitive(newPassword)))
-        ).onSuccessTask { Tasks.forResult(Unit) }
+        ).onSuccessTask { Tasks.forResult<Void>(null) }
 
     /** The email a password reset code was issued for, which also checks that the code is valid. */
     fun verifyPasswordResetCode(code: String): Task<String> =
         postJson("verifyPasswordResetCode", "identitytoolkit.googleapis.com/v1/accounts:resetPassword", JsonObject(mapOf("oobCode" to JsonPrimitive(code))))
-            .onSuccessTask { data -> Tasks.forResult(requireNotNull(data)["email"]?.jsonPrimitive?.contentOrNull ?: throw FirebaseAuthActionCodeException("ERROR_INVALID_ACTION_CODE", "The action code has no email")) }
+            .onSuccessTask { data ->
+                val response = requireNotNull(data)
+                if (response["requestType"]?.jsonPrimitive?.contentOrNull != OobRequestType.PASSWORD_RESET.name) {
+                    throw FirebaseAuthActionCodeException("ERROR_INVALID_ACTION_CODE", "The action code is not a password reset code")
+                }
+                Tasks.forResult(response["email"]?.jsonPrimitive?.contentOrNull ?: throw FirebaseAuthActionCodeException("ERROR_INVALID_ACTION_CODE", "The action code has no email"))
+            }
 
     /** Applies a verification, email recovery or second-factor reversal code. */
-    fun applyActionCode(code: String): Task<Unit> =
+    fun applyActionCode(code: String): Task<Void> =
         postJson("applyActionCode", "identitytoolkit.googleapis.com/v1/accounts:update", JsonObject(mapOf("oobCode" to JsonPrimitive(code))))
-            .onSuccessTask { Tasks.forResult(Unit) }
+            .onSuccessTask { Tasks.forResult<Void>(null) }
 
     @Deprecated("Email enumeration protection hides the sign-in methods of other accounts; Firebase recommends against this call")
     fun fetchSignInMethodsForEmail(email: String): Task<SignInMethodQueryResult> =
@@ -1149,11 +1137,11 @@ class FirebaseAuth constructor(
     fun sendSignInLinkToEmail(
         email: String,
         actionCodeSettings: ActionCodeSettings
-    ): Task<Unit> {
+    ): Task<Void> {
         if (!actionCodeSettings.canHandleCodeInApp()) {
             return Tasks.forException(IllegalArgumentException("You must set canHandleCodeInApp in your ActionCodeSettings to true for Email-Link Sign-in."))
         }
-        return sendOobCode("sendSignInLinkToEmail", OobRequestType.EMAIL_SIGNIN, mapOf("email" to JsonPrimitive(email)), actionCodeSettings)
+        return sendOobCode("sendSignInLinkToEmail", null, OobRequestType.EMAIL_SIGNIN, mapOf("email" to JsonPrimitive(email)), actionCodeSettings)
     }
 
     fun isSignInWithEmailLink(link: String): Boolean = ActionCodeUrl.parseLink(link)?.operation == ActionCodeResult.SIGN_IN_WITH_EMAIL_LINK
@@ -1165,11 +1153,16 @@ class FirebaseAuth constructor(
         signInWithCredential(EmailAuthProvider.getCredentialWithLink(email, link))
 
     /** Makes [user], obtained from this port's own sign-in, the current user. */
-    fun updateCurrentUser(user: FirebaseUser): Task<Unit> {
+    fun updateCurrentUser(user: FirebaseUser): Task<Void> {
         val restored = user as? FirebaseUserImpl
             ?: return Tasks.forException(IllegalArgumentException("The user must come from a firebase-java-sdk sign-in"))
+        if (restored.claims["aud"] != app.options.projectId) {
+            return Tasks.forException(
+                FirebaseAuthInvalidUserException("ERROR_INVALID_USER_TOKEN", "The user belongs to a different Firebase project than this app.")
+            )
+        }
         this.user = restored.copy(app = app, urlFactory = urlFactory)
-        return Tasks.forResult(Unit)
+        return Tasks.forResult<Void>(null)
     }
 
     /** The language of the emails this instance sends, as the `X-Firebase-Locale` header; null for the project default. */
@@ -1196,20 +1189,22 @@ class FirebaseAuth constructor(
 
     /** Revokes an Apple sign-in [token] for the current user, as the Android SDK does before an account deletion. */
     fun revokeAccessToken(token: String): Task<Void> {
-        val idToken = user?.idToken
+        val current = user
             ?: return Tasks.forException(FirebaseNoSignedInUserException("Please sign in before trying to revoke an access token."))
-        return postJson(
-            "revokeAccessToken",
-            "identitytoolkit.googleapis.com/v2/accounts:revokeToken",
-            JsonObject(
-                mapOf(
-                    "providerId" to JsonPrimitive("apple.com"),
-                    "tokenType" to JsonPrimitive("ACCESS_TOKEN"),
-                    "token" to JsonPrimitive(token),
-                    "idToken" to JsonPrimitive(idToken)
+        return freshIdToken(current).onSuccessTask { idToken ->
+            postJson(
+                "revokeAccessToken",
+                "identitytoolkit.googleapis.com/v2/accounts:revokeToken",
+                JsonObject(
+                    mapOf(
+                        "providerId" to JsonPrimitive("apple.com"),
+                        "tokenType" to JsonPrimitive("ACCESS_TOKEN"),
+                        "token" to JsonPrimitive(token),
+                        "idToken" to JsonPrimitive(idToken)
+                    )
                 )
             )
-        ).onSuccessTask { Tasks.forResult(null) }
+        }.onSuccessTask { Tasks.forResult<Void>(null) }
     }
 
     fun startActivityForSignInWithProvider(

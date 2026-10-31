@@ -5,6 +5,9 @@ import com.google.firebase.auth.ActionCodeResult
 import com.google.firebase.auth.ActionCodeSettings
 import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseAuthActionCodeException
+import com.google.firebase.auth.FirebaseAuthUserCollisionException
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
@@ -17,6 +20,7 @@ import kotlinx.serialization.json.jsonPrimitive
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -91,6 +95,7 @@ class FirebaseAuthEmailFlowsTest : FirebaseTest() {
             user.sendEmailVerification().await()
             val code = latestCode("VERIFY_EMAIL")["oobCode"]!!.jsonPrimitive.content
             assertEquals(ActionCodeResult.VERIFY_EMAIL, auth.checkActionCode(code).await().operation)
+            assertThrows(FirebaseAuthActionCodeException::class.java) { runBlocking { auth.verifyPasswordResetCode(code).await() } }
             auth.applyActionCode(code).await()
             assertTrue(lookupEmailVerified(user.getIdToken(false).await().token!!))
         }
@@ -104,6 +109,10 @@ class FirebaseAuthEmailFlowsTest : FirebaseTest() {
             assertEquals(email, linked.user!!.email)
             assertFalse(linked.user!!.isAnonymous)
 
+            val relink = assertThrows(FirebaseAuthUserCollisionException::class.java) {
+                runBlocking { linked.user!!.linkWithCredential(EmailAuthProvider.getCredential(email, "another")).await() }
+            }
+            assertEquals("ERROR_PROVIDER_ALREADY_LINKED", relink.errorCode)
             auth.signOut()
             val signedIn = auth.signInWithCredential(EmailAuthProvider.getCredential(email, "linkpass1")).await()
             assertEquals(anonymous.uid, signedIn.user!!.uid)
