@@ -123,12 +123,15 @@ data class FirebaseUserImpl internal constructor(
     override val providerId: String
         get() = FirebaseAuthProvider.PROVIDER_ID
 
+    /** The ID token's claims; empty when the token is not a JWT, as a test double's may not be. */
     val claims: Map<String, Any?> by lazy {
-        jsonParser
-            .parseToJsonElement(String(Base64.getUrlDecoder().decode(idToken.split(".")[1])))
-            .jsonObject
-            .run { value as? Map<String, Any?>? }
-            .orEmpty()
+        runCatching {
+            jsonParser
+                .parseToJsonElement(String(Base64.getUrlDecoder().decode(idToken.split(".")[1])))
+                .jsonObject
+                .run { value as? Map<String, Any?>? }
+                .orEmpty()
+        }.getOrDefault(emptyMap())
     }
 
     internal val JsonElement.value get(): Any? =
@@ -183,10 +186,12 @@ data class FirebaseUserImpl internal constructor(
 
     override fun updateEmail(email: String): Task<Unit> = FirebaseAuth.getInstance(app).updateEmail(email)
 
+    /** Refreshes the token, then the profile, so a verified or changed email is visible on the current user. */
     override fun reload(): Task<Void> {
-        val source = TaskCompletionSource<Void>()
-        FirebaseAuth.getInstance(app).refreshToken(this, source) { null }
-        return source.task
+        val source = TaskCompletionSource<FirebaseUserImpl>()
+        val auth = FirebaseAuth.getInstance(app)
+        auth.refreshToken(this, source) { it }
+        return source.task.onSuccessTask { auth.updateByGetAccountInfo().onSuccessTask { Tasks.forResult<Void>(null) } }
     }
 
     override fun verifyBeforeUpdateEmail(
@@ -412,7 +417,7 @@ class FirebaseAuth constructor(
         }
     }
 
-    private fun updateByGetAccountInfo(): Task<AuthResult> {
+    internal fun updateByGetAccountInfo(): Task<AuthResult> {
         val source = TaskCompletionSource<AuthResult>()
 
         val body =
@@ -447,12 +452,17 @@ class FirebaseAuth constructor(
                             val data = jsonParser.parseToJsonElement(response.body?.use { it.string() } ?: "").jsonObject
                             val profile = accountProfile(data)
                             val previous = requireNotNull(user) { "No user for account lookup" }
+                            val providerIds =
+                                profile["providerUserInfo"]?.jsonArray?.mapNotNull { it.jsonObject["providerId"]?.jsonPrimitive?.contentOrNull }?.distinct().orEmpty()
                             user = previous.copy(
                                 uid = responseUid(data, previous.idToken),
                                 createdAt = profile["createdAt"]?.jsonPrimitive?.longOrNull ?: previous.createdAt,
                                 email = profile["email"]?.jsonPrimitive?.contentOrNull ?: previous.email,
                                 photoUrlString = profile["photoUrl"]?.jsonPrimitive?.contentOrNull ?: previous.photoUrlString,
-                                displayName = profile["displayName"]?.jsonPrimitive?.contentOrNull ?: previous.displayName
+                                displayName = profile["displayName"]?.jsonPrimitive?.contentOrNull ?: previous.displayName,
+                                phoneNumber = profile["phoneNumber"]?.jsonPrimitive?.contentOrNull ?: previous.phoneNumber,
+                                isEmailVerified = profile["emailVerified"]?.jsonPrimitive?.booleanOrNull ?: previous.isEmailVerified,
+                                providerIds = providerIds.ifEmpty { previous.providerIds }
                             )
                             source.setResult(AuthResultImpl(user, null, null))
                         } catch (exception: Exception) {
@@ -517,9 +527,9 @@ class FirebaseAuth constructor(
         action: String,
         request: Request,
         response: Response
-    ): FirebaseAuthInvalidUserException {
+    ): FirebaseAuthException {
         val body = response.body?.use { it.string() }.orEmpty()
-        val errorCode =
+        val serverMessage =
             runCatching {
                 jsonParser
                     .parseToJsonElement(body)
@@ -529,13 +539,17 @@ class FirebaseAuth constructor(
                     ?.jsonPrimitive
                     ?.contentOrNull
             }.getOrNull() ?: "UNKNOWN_ERROR"
-
-        return FirebaseAuthInvalidUserException(
-            errorCode,
-            "$errorCode: $action API returned an error, " +
+        // The server appends a reason to some codes: "WEAK_PASSWORD : Password should be at least 6 characters".
+        val errorCode = serverMessage.substringBefore(" :").substringBefore(":")
+        val message =
+            "$serverMessage: $action API returned an error, " +
                 "with endpoint [${request.method}] ${request.url.encodedPath} -- " +
                 "response [${response.code}] ${response.message}"
-        )
+        return when (errorCode) {
+            "INVALID_OOB_CODE", "EXPIRED_OOB_CODE" -> FirebaseAuthActionCodeException(errorCode, message)
+            "WEAK_PASSWORD" -> FirebaseAuthWeakPasswordException(errorCode, message, serverMessage.substringAfter(':', "").trim().ifEmpty { null })
+            else -> FirebaseAuthInvalidUserException(serverMessage, message)
+        }
     }
 
     fun signOut() {
@@ -1011,30 +1025,32 @@ class FirebaseAuth constructor(
             )
         }
 
-        return enqueueCredentialAuthPost(authCredential, currentIdToken = signedInUser.idToken) { responseBody ->
-            val data = jsonParser.parseToJsonElement(responseBody).jsonObject
-            val linkedUser =
-                FirebaseUserImpl(
-                    app = app,
-                    data = data,
-                    isAnonymous = false,
-                    email = data["email"]?.jsonPrimitive?.contentOrNull ?: signedInUser.email,
-                    photoUrl = data["photoUrl"]?.jsonPrimitive?.contentOrNull ?: signedInUser.photoUrlString,
-                    displayName = data["displayName"]?.jsonPrimitive?.contentOrNull ?: signedInUser.displayName,
-                    phoneNumber = data["phoneNumber"]?.jsonPrimitive?.contentOrNull ?: signedInUser.phoneNumber,
-                    isEmailVerified = data["emailVerified"]?.jsonPrimitive?.booleanOrNull ?: signedInUser.isEmailVerified,
-                    createdAt = signedInUser.createdAt,
-                    lastSignInAt = signedInUser.lastSignInAt,
-                    existingProviderData = signedInUser.providerData,
-                    urlFactory = urlFactory
-                )
-            if (linkedUser.uid != signedInUser.uid) {
-                throw FirebaseAuthInvalidUserException(
-                    "ERROR_USER_MISMATCH",
-                    "The linked credential returned a different Firebase user."
-                )
-            }
-            linkedUser
+        return freshIdToken(signedInUser).onSuccessTask { idToken ->
+            enqueueCredentialAuthPost(authCredential, currentIdToken = idToken, setResult = { responseBody ->
+                val data = jsonParser.parseToJsonElement(responseBody).jsonObject
+                val linkedUser =
+                    FirebaseUserImpl(
+                        app = app,
+                        data = data,
+                        isAnonymous = false,
+                        email = data["email"]?.jsonPrimitive?.contentOrNull ?: signedInUser.email,
+                        photoUrl = data["photoUrl"]?.jsonPrimitive?.contentOrNull ?: signedInUser.photoUrlString,
+                        displayName = data["displayName"]?.jsonPrimitive?.contentOrNull ?: signedInUser.displayName,
+                        phoneNumber = data["phoneNumber"]?.jsonPrimitive?.contentOrNull ?: signedInUser.phoneNumber,
+                        isEmailVerified = data["emailVerified"]?.jsonPrimitive?.booleanOrNull ?: signedInUser.isEmailVerified,
+                        createdAt = signedInUser.createdAt,
+                        lastSignInAt = signedInUser.lastSignInAt,
+                        existingProviderData = signedInUser.providerData,
+                        urlFactory = urlFactory
+                    )
+                if (linkedUser.uid != signedInUser.uid) {
+                    throw FirebaseAuthInvalidUserException(
+                        "ERROR_USER_MISMATCH",
+                        "The linked credential returned a different Firebase user."
+                    )
+                }
+                linkedUser
+            })
         }
     }
 
@@ -1173,8 +1189,12 @@ class FirebaseAuth constructor(
         languageCode = Locale.getDefault().toLanguageTag()
     }
 
-    /** The tenant to sign in to; the JVM port always uses the project's default tenant. */
+    /** The tenant to sign in to. The JVM port signs in to the project's default tenant only, so a tenant cannot be set. */
     var tenantId: String? = null
+        set(value) {
+            if (value != null) throw UnsupportedOperationException("Multi-tenancy is not supported by firebase-java-sdk")
+            field = null
+        }
 
     /** The domain hosting the project's sign-in helpers; the JVM port runs no browser flows, so it is only kept. */
     var customAuthDomain: String? = null

@@ -13,16 +13,17 @@ class ActionCodeUrl private constructor(
     val operation: Int
 ) {
     companion object {
-        /** The action link's parts, or null when [link] is not a URL with an `oobCode` and a `mode`. */
+        /** The action link's parts, or null when [link] is not a URL with an `apiKey`, an `oobCode` and a `mode`, as on Android. */
         @JvmStatic
         fun parseLink(link: String): ActionCodeUrl? {
             val uri = runCatching { URI(link.trim()) }.getOrNull() ?: return null
             val params = queryParameters(uri.rawQuery)
             params["link"]?.let { return parseLink(it) }
             params["deep_link_id"]?.let { return parseLink(it) }
+            val apiKey = params["apiKey"] ?: return null
             val code = params["oobCode"] ?: return null
             val mode = params["mode"] ?: return null
-            return ActionCodeUrl(params["apiKey"], code, params["continueUrl"], params["lang"], operationOf(mode))
+            return ActionCodeUrl(apiKey, code, params["continueUrl"], params["lang"], operationOf(mode))
         }
 
         private fun queryParameters(rawQuery: String?): Map<String, String> =

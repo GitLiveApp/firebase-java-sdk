@@ -57,18 +57,18 @@ class FirebaseAuthApiTest : FirebaseTest() {
                 .setAndroidPackageName("com.example", true, "12")
                 .setLinkDomain("example.page.link")
                 .build()
-        assertEquals("https://example.com/finish", settings.getUrl())
+        assertEquals("https://example.com/finish", settings.url)
         assertTrue(settings.canHandleCodeInApp())
-        assertEquals("com.example.ios", settings.getIOSBundle())
-        assertEquals("com.example", settings.getAndroidPackageName())
-        assertTrue(settings.getAndroidInstallApp())
-        assertEquals("12", settings.getAndroidMinimumVersion())
-        assertEquals("example.page.link", settings.getLinkDomain())
+        assertEquals("com.example.ios", settings.iOSBundle)
+        assertEquals("com.example", settings.androidPackageName)
+        assertTrue(settings.androidInstallApp)
+        assertEquals("12", settings.androidMinimumVersion)
+        assertEquals("example.page.link", settings.linkDomain)
 
         val builder = ActionCodeSettings.newBuilder().setUrl("https://example.com")
-        assertEquals("https://example.com", builder.getUrl())
-        assertFalse(builder.getHandleCodeInApp())
-        assertNull(builder.getLinkDomain())
+        assertEquals("https://example.com", builder.url)
+        assertFalse(builder.handleCodeInApp)
+        assertNull(builder.linkDomain)
         assertThrows(IllegalArgumentException::class.java) { ActionCodeSettings.newBuilder().build() }
     }
 
@@ -84,12 +84,13 @@ class FirebaseAuthApiTest : FirebaseTest() {
         assertEquals("https://example.com/finish", url.continueUrl)
         assertEquals("en", url.languageCode)
 
-        val inner = "https://fir-java-sdk.firebaseapp.com/__/auth/action?mode=signIn&oobCode=xyz"
+        val inner = "https://fir-java-sdk.firebaseapp.com/__/auth/action?mode=signIn&oobCode=xyz&apiKey=key"
         val wrapped = "https://example.page.link/?link=" + URLEncoder.encode(inner, "UTF-8")
         assertEquals(ActionCodeResult.SIGN_IN_WITH_EMAIL_LINK, ActionCodeUrl.parseLink(wrapped)!!.operation)
         assertTrue(auth.isSignInWithEmailLink(wrapped))
         assertFalse(auth.isSignInWithEmailLink(link))
         assertNull(ActionCodeUrl.parseLink("https://example.com/"))
+        assertNull(ActionCodeUrl.parseLink("https://x/?mode=signIn&oobCode=xyz")) // no apiKey
         assertNull(ActionCodeUrl.parseLink("not a url"))
     }
 
@@ -109,10 +110,10 @@ class FirebaseAuthApiTest : FirebaseTest() {
         assertEquals("password", email.provider)
         assertEquals("password", email.signInMethod)
         assertFalse(email.toString().contains("secret"))
-        val link = EmailAuthProvider.getCredentialWithLink("a@b.c", "https://x/?mode=signIn&oobCode=code1")
+        val link = EmailAuthProvider.getCredentialWithLink("a@b.c", "https://x/?mode=signIn&oobCode=code1&apiKey=key")
         assertEquals("emailLink", link.signInMethod)
         assertThrows(IllegalArgumentException::class.java) { EmailAuthProvider.getCredentialWithLink("a@b.c", "https://x/") }
-        assertThrows(IllegalArgumentException::class.java) { EmailAuthProvider.getCredentialWithLink("a@b.c", "https://x/?mode=resetPassword&oobCode=code1") }
+        assertThrows(IllegalArgumentException::class.java) { EmailAuthProvider.getCredentialWithLink("a@b.c", "https://x/?mode=resetPassword&oobCode=code1&apiKey=key") }
 
         assertTrue(FacebookAuthProvider.getCredential("token") is FacebookAuthCredential)
         assertEquals("github.com", GithubAuthProvider.getCredential("token").provider)
@@ -163,9 +164,8 @@ class FirebaseAuthApiTest : FirebaseTest() {
             assertEquals(Locale.getDefault().toLanguageTag(), auth.languageCode)
             auth.languageCode = null
 
-            auth.tenantId = "tenant"
-            assertEquals("tenant", auth.tenantId)
-            auth.tenantId = null
+            assertThrows(UnsupportedOperationException::class.java) { auth.tenantId = "tenant" }
+            assertNull(auth.tenantId)
             auth.customAuthDomain = "auth.example.com"
             assertEquals("auth.example.com", auth.customAuthDomain)
 
@@ -178,10 +178,10 @@ class FirebaseAuthApiTest : FirebaseTest() {
     @Test
     fun `exceptions carry the android details`() {
         val collision = FirebaseAuthUserCollisionException("ERROR_EMAIL_ALREADY_IN_USE", "exists")
-        assertNull(collision.getEmail())
-        assertNull(collision.getUpdatedCredential())
-        assertEquals("too short", FirebaseAuthWeakPasswordException("ERROR_WEAK_PASSWORD", "weak", "too short").getReason())
-        assertNull(FirebaseAuthWeakPasswordException("ERROR_WEAK_PASSWORD", "weak").getReason())
+        assertNull(collision.email)
+        assertNull(collision.updatedCredential)
+        assertEquals("too short", FirebaseAuthWeakPasswordException("ERROR_WEAK_PASSWORD", "weak", "too short").reason)
+        assertNull(FirebaseAuthWeakPasswordException("ERROR_WEAK_PASSWORD", "weak").reason)
         assertEquals("ERROR_MISSING_ACTIVITY", FirebaseAuthMissingActivityForRecaptchaException().errorCode)
     }
 

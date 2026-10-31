@@ -6,3 +6,4 @@ build/
 /local.properties
 /.DS_Store
 
+/firebase-debug.log

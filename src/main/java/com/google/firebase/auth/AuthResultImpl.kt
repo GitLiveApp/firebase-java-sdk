@@ -52,7 +52,8 @@ internal class AdditionalUserInfoImpl(
             return AdditionalUserInfoImpl(
                 providerId = data["providerId"]?.jsonPrimitive?.contentOrNull,
                 profile = profile,
-                username = data["screenName"]?.jsonPrimitive?.contentOrNull,
+                // GitHub's profile carries the username as login, Twitter's as screen_name.
+                username = data["screenName"]?.jsonPrimitive?.contentOrNull ?: (profile["login"] ?: profile["screen_name"]) as? String,
                 newUser = data["isNewUser"]?.jsonPrimitive?.booleanOrNull ?: newUserByDefault
             )
         }

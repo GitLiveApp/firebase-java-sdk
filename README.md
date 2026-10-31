@@ -148,7 +148,7 @@ the auth state and ID token listeners.
 
 Not supported, as they need a device or a browser: phone number verification (`PhoneAuthProvider.verifyPhoneNumber`
 reports a failure to its callbacks), multi-factor enrolment and sign-in, provider sign-in through an Activity
-(`startActivityForSignInWithProvider` and the `FirebaseUser` counterparts fail) and reCAPTCHA. Not yet implemented:
+(`startActivityForSignInWithProvider` and the `FirebaseUser` counterparts fail), reCAPTCHA and multi-tenancy (`setTenantId` throws). Not yet implemented:
 `reauthenticate`, `reauthenticateAndRetrieveData`, `unlink` and `updatePassword`.
 #### Realtime Database does not support [Disk Persistence](https://firebase.google.com/docs/database/android/offline-capabilities), and should be setup as follows:
 ```java
