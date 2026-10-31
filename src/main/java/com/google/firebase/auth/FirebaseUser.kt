@@ -33,15 +33,15 @@ abstract class FirebaseUser : UserInfo {
 
     abstract fun linkWithCredential(credential: AuthCredential): Task<AuthResult>
 
-    fun verifyBeforeUpdateEmail(newEmail: String): Task<Unit> = verifyBeforeUpdateEmail(newEmail, null)
+    fun verifyBeforeUpdateEmail(newEmail: String): Task<Void> = verifyBeforeUpdateEmail(newEmail, null)
 
-    abstract fun verifyBeforeUpdateEmail(newEmail: String, actionCodeSettings: ActionCodeSettings?): Task<Unit>
+    abstract fun verifyBeforeUpdateEmail(newEmail: String, actionCodeSettings: ActionCodeSettings?): Task<Void>
 
-    fun sendEmailVerification(): Task<Unit> = sendEmailVerification(null)
+    fun sendEmailVerification(): Task<Void> = sendEmailVerification(null)
 
-    abstract fun sendEmailVerification(actionCodeSettings: ActionCodeSettings?): Task<Unit>
+    abstract fun sendEmailVerification(actionCodeSettings: ActionCodeSettings?): Task<Void>
 
-    abstract fun updatePhoneNumber(credential: PhoneAuthCredential): Task<Unit>
+    abstract fun updatePhoneNumber(credential: PhoneAuthCredential): Task<Void>
 
     fun startActivityForLinkWithProvider(activity: Activity, federatedAuthProvider: FederatedAuthProvider): Task<AuthResult> =
         unsupportedTask(ACTIVITY_FLOWS_UNSUPPORTED)

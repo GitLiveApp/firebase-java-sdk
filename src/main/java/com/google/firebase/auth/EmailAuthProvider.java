@@ -14,7 +14,7 @@ public class EmailAuthProvider {
 
     public static AuthCredential getCredentialWithLink(String email, String emailLink) {
         ActionCodeUrl url = ActionCodeUrl.parseLink(AuthCredential.requireValue(emailLink, "emailLink"));
-        if (url == null || url.getCode() == null) {
+        if (url == null || url.getCode() == null || url.getOperation() != ActionCodeResult.SIGN_IN_WITH_EMAIL_LINK) {
             throw new IllegalArgumentException(
                 "Given link is not a valid email link. Please use FirebaseAuth#isSignInWithEmailLink(String) to determine this before calling this function"
             );

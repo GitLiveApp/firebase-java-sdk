@@ -12,7 +12,7 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.longOrNull
 
-internal data class AuthResultImpl(
+internal class AuthResultImpl(
     private val user: FirebaseUser?,
     private val additionalUserInfo: AdditionalUserInfo?,
     private val credential: AuthCredential?
@@ -22,6 +22,9 @@ internal data class AuthResultImpl(
     override fun getAdditionalUserInfo(): AdditionalUserInfo? = additionalUserInfo
 
     override fun getCredential(): AuthCredential? = credential
+
+    /** Names the user without rendering it: the user's string form carries its tokens. */
+    override fun toString(): String = "AuthResult{uid=${user?.uid}, provider=${additionalUserInfo?.providerId}}"
 }
 
 /** What a sign-in response says about the account beyond the user: provider, raw profile and whether it was created. */

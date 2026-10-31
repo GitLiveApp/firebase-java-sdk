@@ -112,6 +112,7 @@ class FirebaseAuthApiTest : FirebaseTest() {
         val link = EmailAuthProvider.getCredentialWithLink("a@b.c", "https://x/?mode=signIn&oobCode=code1")
         assertEquals("emailLink", link.signInMethod)
         assertThrows(IllegalArgumentException::class.java) { EmailAuthProvider.getCredentialWithLink("a@b.c", "https://x/") }
+        assertThrows(IllegalArgumentException::class.java) { EmailAuthProvider.getCredentialWithLink("a@b.c", "https://x/?mode=resetPassword&oobCode=code1") }
 
         assertTrue(FacebookAuthProvider.getCredential("token") is FacebookAuthCredential)
         assertEquals("github.com", GithubAuthProvider.getCredential("token").provider)
