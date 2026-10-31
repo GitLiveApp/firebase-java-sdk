@@ -58,7 +58,8 @@ class BundleTest {
 
     @Test
     fun `copies, merges, removes and clears`() {
-        val source = Bundle(mapOf<String, Any>("a" to 1, "b" to "two"))
+        val source = Bundle(java.util.Collections.singletonMap<String, Any>("a", 1))
+        source.putString("b", "two") // the map constructor copies, so an immutable map does not make the bundle immutable
         val copy = Bundle(source)
         copy.putInt("c", 3)
         assertEquals(2, source.size())

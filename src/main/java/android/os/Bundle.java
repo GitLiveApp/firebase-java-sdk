@@ -18,8 +18,9 @@ public class Bundle {
         this.data = new LinkedHashMap<>();
     }
 
+    /** A bundle holding a copy of {@code data}, so that it stays mutable whatever map it is created from. */
     public Bundle(Map<String, Object> data) {
-        this.data = data;
+        this.data = new LinkedHashMap<>(data);
     }
 
     public Bundle(Bundle bundle) {
