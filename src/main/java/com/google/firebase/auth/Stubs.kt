@@ -1,78 +1,27 @@
 package com.google.firebase.auth
 
-import android.net.Uri
-import com.google.android.gms.tasks.Task
-
-class ActionCodeSettings {
-    companion object {
-        fun newBuilder(): Builder = TODO()
-    }
-
-    class Builder {
-        fun setAndroidPackageName(packageName: String, installIfNotAvailable: Boolean, minimumVersion: String?): Builder = TODO()
-        fun setDynamicLinkDomain(dynamicLinkDomain: String): Builder = TODO()
-        fun setIOSBundleId(iOSBundleId: String): Builder = TODO()
-        fun setUrl(url: String): Builder = TODO()
-        fun setHandleCodeInApp(canHandleCodeInApp: Boolean): Builder = TODO()
-        fun build(): ActionCodeSettings = TODO()
-    }
-}
-
-class FirebaseAuthMultiFactorException(errorCode: String, detailMessage: String) : FirebaseAuthException(errorCode, detailMessage)
-
-class UserInfo internal constructor(
-    val displayName: String?,
-    val email: String?,
-    val phoneNumber: String?,
-    photoUrl: String?,
-    val providerId: String,
-    val uid: String
-) {
-    val photoUrl: Uri? = photoUrl?.let(Uri::parse)
-}
-
 class FirebaseUserMetadata internal constructor(
     val creationTimestamp: Long,
     val lastSignInTimestamp: Long
 )
 
-class MultiFactor {
-    val uid: String get() = TODO()
-    val enrolledFactors: List<MultiFactorInfo> get() = TODO()
-    val session: Task<MultiFactorSession> get() = TODO()
-    fun enroll(multiFactorAssertion: MultiFactorAssertion, displayName: String?): Task<Unit> = TODO()
-    fun unenroll(multiFactorInfo: MultiFactorInfo): Task<Unit> = TODO()
-    fun unenroll(factorUid: String): Task<Unit> = TODO()
-}
-class MultiFactorInfo {
-    val displayName: String? get() = TODO()
-    val enrollmentTimestamp: Long get() = TODO()
-    val factorId: String get() = TODO()
-    val uid: String get() = TODO()
-}
-class MultiFactorAssertion {
-    val factorId: String get() = TODO()
-}
-class MultiFactorSession
-class MultiFactorResolver {
-    val firebaseAuth: FirebaseAuth get() = TODO()
-    val hints: List<MultiFactorInfo> get() = TODO()
-    val session: MultiFactorSession get() = TODO()
-    fun resolveSignIn(assertion: MultiFactorAssertion): Task<AuthResult> = TODO()
-}
-
-class PhoneAuthCredential internal constructor(
-    internal val verificationId: String,
-    internal val smsCode: String
-) : AuthCredential("phone") {
-    init {
-        require(verificationId.isNotBlank()) { "verificationId must not be blank" }
-        require(smsCode.isNotBlank()) { "smsCode must not be blank" }
-    }
-
-    override fun toString(): String = "PhoneAuthCredential{provider='phone'}"
-}
-
 interface SignInMethodQueryResult {
     val signInMethods: List<String>
+}
+
+internal class SignInMethodQueryResultImpl(override val signInMethods: List<String>) : SignInMethodQueryResult
+
+internal class FirebaseAuthSettingsImpl : FirebaseAuthSettings() {
+    internal var appVerificationDisabledForTesting = false
+    internal var forceRecaptchaFlowForTesting = false
+
+    override fun forceRecaptchaFlowForTesting(forceRecaptchaFlow: Boolean) {
+        forceRecaptchaFlowForTesting = forceRecaptchaFlow
+    }
+
+    override fun setAppVerificationDisabledForTesting(disabled: Boolean) {
+        appVerificationDisabledForTesting = disabled
+    }
+
+    override fun setAutoRetrievedSmsCodeForPhoneNumber(phoneNumber: String?, smsCode: String?) = Unit
 }

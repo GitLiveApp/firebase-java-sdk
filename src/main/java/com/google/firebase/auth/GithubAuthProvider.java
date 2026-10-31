@@ -1,9 +1,13 @@
 package com.google.firebase.auth;
 
-import kotlin.NotImplementedError;
-
 public class GithubAuthProvider {
+    public static final String PROVIDER_ID = "github.com";
+    public static final String GITHUB_SIGN_IN_METHOD = "github.com";
+
+    private GithubAuthProvider() {
+    }
+
     public static AuthCredential getCredential(String token) {
-        throw new NotImplementedError();
+        return new GithubAuthCredential(token);
     }
 }

@@ -1,5 +1,8 @@
 package com.google.firebase.auth;
 
-public interface ActionCodeMultiFactorInfo extends ActionCodeInfo {
-    MultiFactorInfo getMultiFactorInfo();
+public abstract class ActionCodeMultiFactorInfo extends ActionCodeInfo {
+    public ActionCodeMultiFactorInfo() {
+    }
+
+    public abstract MultiFactorInfo getMultiFactorInfo();
 }

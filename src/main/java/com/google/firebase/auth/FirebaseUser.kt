@@ -1,49 +1,61 @@
 package com.google.firebase.auth
 
+import android.app.Activity
+import android.net.Uri
 import com.google.android.gms.tasks.Task
 
-abstract class FirebaseUser {
-    abstract val uid: String
-    abstract val email: String?
-    abstract val photoUrl: String?
-    abstract val displayName: String?
+abstract class FirebaseUser : UserInfo {
+    abstract override val uid: String
+    abstract override val email: String?
+    abstract override val photoUrl: Uri?
+    abstract override val displayName: String?
+    abstract override val phoneNumber: String?
+    abstract override val isEmailVerified: Boolean
+    abstract override val providerId: String
     abstract val isAnonymous: Boolean
+    abstract val metadata: FirebaseUserMetadata
+    abstract val providerData: List<UserInfo>
+
+    /** The tenant the user belongs to; the JVM port signs in to the project's default tenant. */
+    open val tenantId: String? get() = null
+
+    val multiFactor: MultiFactor get() = UnsupportedMultiFactor()
 
     abstract fun delete(): Task<Void>
 
     abstract fun reload(): Task<Void>
 
-    abstract fun verifyBeforeUpdateEmail(
-        newEmail: String,
-        actionCodeSettings: ActionCodeSettings?
-    ): Task<Unit>
+    abstract fun getIdToken(forceRefresh: Boolean): Task<GetTokenResult>
 
     abstract fun updateEmail(email: String): Task<Unit>
 
-    abstract fun getIdToken(forceRefresh: Boolean): Task<GetTokenResult>
-
     abstract fun updateProfile(request: UserProfileChangeRequest): Task<Unit>
-
-    abstract val phoneNumber: String?
-    abstract val isEmailVerified: Boolean
-    abstract val metadata: FirebaseUserMetadata
-    val multiFactor: MultiFactor get() = TODO()
-    abstract val providerData: List<UserInfo>
-    abstract val providerId: String
 
     abstract fun linkWithCredential(credential: AuthCredential): Task<AuthResult>
 
-    fun sendEmailVerification(): Task<Unit> = TODO()
+    fun verifyBeforeUpdateEmail(newEmail: String): Task<Unit> = verifyBeforeUpdateEmail(newEmail, null)
 
-    fun sendEmailVerification(actionCodeSettings: ActionCodeSettings): Task<Unit> = TODO()
+    abstract fun verifyBeforeUpdateEmail(newEmail: String, actionCodeSettings: ActionCodeSettings?): Task<Unit>
+
+    fun sendEmailVerification(): Task<Unit> = sendEmailVerification(null)
+
+    abstract fun sendEmailVerification(actionCodeSettings: ActionCodeSettings?): Task<Unit>
+
+    abstract fun updatePhoneNumber(credential: PhoneAuthCredential): Task<Unit>
+
+    fun startActivityForLinkWithProvider(activity: Activity, federatedAuthProvider: FederatedAuthProvider): Task<AuthResult> =
+        unsupportedTask(ACTIVITY_FLOWS_UNSUPPORTED)
+
+    fun startActivityForReauthenticateWithProvider(activity: Activity, federatedAuthProvider: FederatedAuthProvider): Task<AuthResult> =
+        unsupportedTask(ACTIVITY_FLOWS_UNSUPPORTED)
 
     fun unlink(provider: String): Task<AuthResult> = TODO()
 
     fun updatePassword(password: String): Task<Unit> = TODO()
 
-    fun updatePhoneNumber(credential: AuthCredential): Task<Unit> = TODO()
-
     fun reauthenticate(credential: AuthCredential): Task<Unit> = TODO()
 
     fun reauthenticateAndRetrieveData(credential: AuthCredential): Task<AuthResult> = TODO()
 }
+
+internal const val ACTIVITY_FLOWS_UNSUPPORTED = "Provider sign-in through an Activity is not available on the JVM; sign in with a credential instead"

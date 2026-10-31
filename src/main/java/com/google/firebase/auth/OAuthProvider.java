@@ -6,7 +6,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-public final class OAuthProvider {
+public final class OAuthProvider extends FederatedAuthProvider {
     private final String provider;
     private final FirebaseAuth auth;
     private final List<String> scopes;
@@ -19,8 +19,10 @@ public final class OAuthProvider {
         customParameters = Collections.unmodifiableMap(new LinkedHashMap<>(builder.customParameters));
     }
 
+    /** @deprecated use {@link #newCredentialBuilder(String)}. */
+    @Deprecated
     public static AuthCredential getCredential(String providerId, String idToken, String accessToken) {
-        return new OAuthCredential(providerId, idToken, accessToken, null);
+        return new OAuthCredentialImpl(providerId, idToken, accessToken, null, null);
     }
 
     public String getProviderId() {
@@ -58,6 +60,18 @@ public final class OAuthProvider {
                 throw new IllegalArgumentException("scopes must not be null.");
             }
             this.scopes = new ArrayList<>(scopes);
+            return this;
+        }
+
+        public List<String> getScopes() {
+            return Collections.unmodifiableList(new ArrayList<>(scopes));
+        }
+
+        public Builder addCustomParameter(String paramKey, String paramValue) {
+            if (paramKey == null || paramValue == null) {
+                throw new IllegalArgumentException("customParameter key and value must not be null.");
+            }
+            this.customParameters.put(paramKey, paramValue);
             return this;
         }
 
@@ -101,8 +115,16 @@ public final class OAuthProvider {
             return this;
         }
 
+        public String getAccessToken() {
+            return accessToken;
+        }
+
+        public String getIdToken() {
+            return idToken;
+        }
+
         public AuthCredential build() {
-            return new OAuthCredential(provider, idToken, accessToken, rawNonce);
+            return new OAuthCredentialImpl(provider, idToken, accessToken, null, rawNonce);
         }
     }
 

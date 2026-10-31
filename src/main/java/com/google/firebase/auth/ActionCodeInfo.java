@@ -1,8 +1,17 @@
 package com.google.firebase.auth;
 
-import androidx.annotation.NonNull;
+/** The account an action code concerns, from {@link FirebaseAuth#checkActionCode}. */
+public class ActionCodeInfo {
+    protected String email;
 
-public interface ActionCodeInfo {
-    @NonNull
-    String getEmail();
+    public ActionCodeInfo() {
+    }
+
+    ActionCodeInfo(String email) {
+        this.email = email;
+    }
+
+    public String getEmail() {
+        return email;
+    }
 }

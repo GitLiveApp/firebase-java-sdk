@@ -86,7 +86,7 @@ class FirebaseAuthTest : FirebaseTest() {
                         .build()
                 )?.await()
             assertEquals("testDisplayName", auth.currentUser?.displayName)
-            assertEquals("https://picsum.photos/100", auth.currentUser?.photoUrl)
+            assertEquals("https://picsum.photos/100", auth.currentUser?.photoUrl?.toString())
         }
 
     @Test
