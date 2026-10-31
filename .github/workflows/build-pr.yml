@@ -18,4 +18,4 @@ jobs:
       - name: Install Firebase CLI
         run: npm install -g firebase-tools
       - name: Build
-        run: firebase emulators:exec --project my-firebase-project --import=src/test/resources/firebase_data './gradlew build'
+        run: firebase emulators:exec --project fir-java-sdk --import=src/test/resources/firebase_data './gradlew build'
