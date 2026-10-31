@@ -5,9 +5,11 @@ import android.os.Parcel
 import android.os.Parcelable
 
 class UserProfileChangeRequest private constructor(
-    internal val displayName: String?,
+    val displayName: String?,
     internal val photoUrl: String?
 ) : Parcelable {
+    val photoUri: Uri? get() = photoUrl?.let(Uri::parse)
+
     override fun describeContents(): Int = displayName.hashCode() + photoUrl.hashCode()
 
     override fun writeToParcel(
@@ -41,6 +43,10 @@ class UserProfileChangeRequest private constructor(
             this.photoUri = uri
             return this
         }
+
+        fun getDisplayName(): String? = displayName
+
+        fun getPhotoUri(): Uri? = photoUri
 
         fun build(): UserProfileChangeRequest = UserProfileChangeRequest(displayName, photoUri?.toString())
     }

@@ -1,9 +1,13 @@
 package com.google.firebase.auth;
 
-import kotlin.NotImplementedError;
-
 public class TwitterAuthProvider {
-    public static AuthCredential getCredential(String email, String password) {
-        throw new NotImplementedError();
+    public static final String PROVIDER_ID = "twitter.com";
+    public static final String TWITTER_SIGN_IN_METHOD = "twitter.com";
+
+    private TwitterAuthProvider() {
+    }
+
+    public static AuthCredential getCredential(String token, String secret) {
+        return new TwitterAuthCredential(token, secret);
     }
 }

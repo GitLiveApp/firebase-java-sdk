@@ -140,19 +140,16 @@ Is the Firebase library or API you need missing? [Create an issue](https://githu
 
 Currently, the following limitations are observed:
 
-#### Firebase Auth implementation is minimal and only supports a small subset of the API:
- -  `createUserWithEmailAndPassword`
-  - `signInAnonymously`
-  - `signInWithCustomToken`
-  - `signInWithEmailAndPassword`
-  - `currentUser`
-  - `getAccessToken`
-  - `getUid`
-  - `addIdTokenListener`
-  - `removeIdTokenListener`
-  - `addAuthStateListener`
-  - `removeAuthStateListener`
-  - `signOut`
+#### Firebase Auth is a REST implementation and does not cover the whole Android API:
+Supported: anonymous, email and password, custom token, email link and credential sign-in (Google, Facebook, GitHub,
+Twitter, a generic OAuth provider, a phone verification code), linking a credential, profile, email and phone number
+updates, password reset, email verification and the other action-code flows, sign-in method lookup, token refresh and
+the auth state and ID token listeners.
+
+Not supported, as they need a device or a browser: phone number verification (`PhoneAuthProvider.verifyPhoneNumber`
+reports a failure to its callbacks), multi-factor enrolment and sign-in, provider sign-in through an Activity
+(`startActivityForSignInWithProvider` and the `FirebaseUser` counterparts fail) and reCAPTCHA. Not yet implemented:
+`reauthenticate`, `reauthenticateAndRetrieveData`, `unlink` and `updatePassword`.
 #### Realtime Database does not support [Disk Persistence](https://firebase.google.com/docs/database/android/offline-capabilities), and should be setup as follows:
 ```java
 FirebaseDatabase.getInstance().setPersistenceEnabled(false)
