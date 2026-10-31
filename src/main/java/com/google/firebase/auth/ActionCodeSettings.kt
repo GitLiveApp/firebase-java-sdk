@@ -8,35 +8,23 @@ import kotlinx.serialization.json.JsonPrimitive
  * `sendOobCode` as its continue URL, bundle ids and link domain.
  */
 class ActionCodeSettings private constructor(
-    private val url: String,
-    private val iOSBundleId: String?,
-    private val androidPackageName: String?,
-    private val androidInstallApp: Boolean,
-    private val androidMinimumVersion: String?,
+    val url: String,
+    val iOSBundle: String?,
+    val androidPackageName: String?,
+    val androidInstallApp: Boolean,
+    val androidMinimumVersion: String?,
     private val handleCodeInApp: Boolean,
-    private val linkDomain: String?,
+    val linkDomain: String?,
     private val dynamicLinkDomain: String?
 ) {
-    fun getUrl(): String = url
-
-    fun getIOSBundle(): String? = iOSBundleId
-
-    fun getAndroidPackageName(): String? = androidPackageName
-
-    fun getAndroidInstallApp(): Boolean = androidInstallApp
-
-    fun getAndroidMinimumVersion(): String? = androidMinimumVersion
-
     fun canHandleCodeInApp(): Boolean = handleCodeInApp
-
-    fun getLinkDomain(): String? = linkDomain
 
     /** The `sendOobCode` request fields these settings add. */
     internal fun toRequestFields(): Map<String, JsonElement> =
         buildMap {
             put("continueUrl", JsonPrimitive(url))
             put("canHandleCodeInApp", JsonPrimitive(handleCodeInApp))
-            iOSBundleId?.let { put("iOSBundleId", JsonPrimitive(it)) }
+            iOSBundle?.let { put("iOSBundleId", JsonPrimitive(it)) }
             androidPackageName?.let {
                 put("androidPackageName", JsonPrimitive(it))
                 put("androidInstallApp", JsonPrimitive(androidInstallApp))
@@ -47,22 +35,29 @@ class ActionCodeSettings private constructor(
         }
 
     class Builder internal constructor() {
-        private var url: String? = null
-        private var iOSBundleId: String? = null
+        private var urlValue: String? = null
+        private var iOSBundleIdValue: String? = null
         private var androidPackageName: String? = null
         private var androidInstallApp: Boolean = false
         private var androidMinimumVersion: String? = null
-        private var handleCodeInApp: Boolean = false
-        private var linkDomain: String? = null
-        private var dynamicLinkDomain: String? = null
+        private var handleCodeInAppValue: Boolean = false
+        private var linkDomainValue: String? = null
+        private var dynamicLinkDomainValue: String? = null
 
-        fun setUrl(url: String): Builder = apply { this.url = url }
+        val url: String? get() = urlValue
 
-        fun getUrl(): String? = url
+        val iOSBundleId: String? get() = iOSBundleIdValue
 
-        fun setIOSBundleId(iOSBundleId: String): Builder = apply { this.iOSBundleId = iOSBundleId }
+        val handleCodeInApp: Boolean get() = handleCodeInAppValue
 
-        fun getIOSBundleId(): String? = iOSBundleId
+        val linkDomain: String? get() = linkDomainValue
+
+        @Deprecated("Use linkDomain")
+        val dynamicLinkDomain: String? get() = dynamicLinkDomainValue
+
+        fun setUrl(url: String): Builder = apply { urlValue = url }
+
+        fun setIOSBundleId(iOSBundleId: String): Builder = apply { iOSBundleIdValue = iOSBundleId }
 
         fun setAndroidPackageName(androidPackageName: String, installIfNotAvailable: Boolean, minimumVersion: String?): Builder = apply {
             this.androidPackageName = androidPackageName
@@ -70,24 +65,17 @@ class ActionCodeSettings private constructor(
             this.androidMinimumVersion = minimumVersion
         }
 
-        fun setHandleCodeInApp(canHandleCodeInApp: Boolean): Builder = apply { this.handleCodeInApp = canHandleCodeInApp }
+        fun setHandleCodeInApp(canHandleCodeInApp: Boolean): Builder = apply { handleCodeInAppValue = canHandleCodeInApp }
 
-        fun getHandleCodeInApp(): Boolean = handleCodeInApp
-
-        fun setLinkDomain(linkDomain: String): Builder = apply { this.linkDomain = linkDomain }
-
-        fun getLinkDomain(): String? = linkDomain
+        fun setLinkDomain(linkDomain: String): Builder = apply { linkDomainValue = linkDomain }
 
         @Deprecated("Use setLinkDomain")
-        fun setDynamicLinkDomain(dynamicLinkDomain: String): Builder = apply { this.dynamicLinkDomain = dynamicLinkDomain }
-
-        @Deprecated("Use getLinkDomain")
-        fun getDynamicLinkDomain(): String? = dynamicLinkDomain
+        fun setDynamicLinkDomain(dynamicLinkDomain: String): Builder = apply { dynamicLinkDomainValue = dynamicLinkDomain }
 
         fun build(): ActionCodeSettings {
-            val url = requireNotNull(url) { "ActionCodeSettings url must be set" }
+            val url = requireNotNull(urlValue) { "ActionCodeSettings url must be set" }
             require(url.isNotBlank()) { "ActionCodeSettings url must not be blank" }
-            return ActionCodeSettings(url, iOSBundleId, androidPackageName, androidInstallApp, androidMinimumVersion, handleCodeInApp, linkDomain, dynamicLinkDomain)
+            return ActionCodeSettings(url, iOSBundleIdValue, androidPackageName, androidInstallApp, androidMinimumVersion, handleCodeInAppValue, linkDomainValue, dynamicLinkDomainValue)
         }
     }
 

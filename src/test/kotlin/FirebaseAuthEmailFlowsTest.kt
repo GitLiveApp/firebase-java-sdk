@@ -7,24 +7,23 @@ import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseAuthActionCodeException
 import com.google.firebase.auth.FirebaseAuthUserCollisionException
+import com.google.firebase.auth.FirebaseAuthWeakPasswordException
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
-import java.net.HttpURLConnection
 import java.net.URL
 import java.util.UUID
 
@@ -45,16 +44,6 @@ class FirebaseAuthEmailFlowsTest : FirebaseTest() {
 
     private fun latestCode(requestType: String): JsonObject =
         oobCodes().last { it["email"]?.jsonPrimitive?.content == email && it["requestType"]?.jsonPrimitive?.content == requestType }
-
-    private fun lookupEmailVerified(idToken: String): Boolean {
-        val connection = URL("$emulator/identitytoolkit.googleapis.com/v1/accounts:lookup?key=${options.apiKey}").openConnection() as HttpURLConnection
-        connection.requestMethod = "POST"
-        connection.doOutput = true
-        connection.setRequestProperty("Content-Type", "application/json")
-        connection.outputStream.use { it.write(JsonObject(mapOf("idToken" to JsonPrimitive(idToken))).toString().toByteArray()) }
-        val body = connection.inputStream.use { it.readBytes().decodeToString() }
-        return Json.parseToJsonElement(body).jsonObject["users"]!!.jsonArray.first().jsonObject["emailVerified"]?.jsonPrimitive?.booleanOrNull ?: false
-    }
 
     @Test
     fun `a password reset code is checked, verified and confirmed`() =
@@ -97,7 +86,18 @@ class FirebaseAuthEmailFlowsTest : FirebaseTest() {
             assertEquals(ActionCodeResult.VERIFY_EMAIL, auth.checkActionCode(code).await().operation)
             assertThrows(FirebaseAuthActionCodeException::class.java) { runBlocking { auth.verifyPasswordResetCode(code).await() } }
             auth.applyActionCode(code).await()
-            assertTrue(lookupEmailVerified(user.getIdToken(false).await().token!!))
+            auth.currentUser!!.reload().await()
+            assertTrue(auth.currentUser!!.isEmailVerified)
+        }
+
+    @Test
+    fun `server errors arrive as the android exception types`() =
+        runTest {
+            val invalidCode = assertThrows(FirebaseAuthActionCodeException::class.java) { runBlocking { auth.checkActionCode("not-a-code").await() } }
+            assertEquals("INVALID_OOB_CODE", invalidCode.errorCode)
+            val weak = assertThrows(FirebaseAuthWeakPasswordException::class.java) { runBlocking { auth.createUserWithEmailAndPassword(email, "123").await() } }
+            assertEquals("WEAK_PASSWORD", weak.errorCode)
+            assertNotNull(weak.reason)
         }
 
     @Test
