@@ -3,29 +3,34 @@ package android.os
 import java.io.Closeable
 import java.io.File
 import java.io.FileDescriptor
+import java.io.FileInputStream
 import java.io.FileNotFoundException
+import java.io.FileOutputStream
 import java.io.IOException
 import java.io.RandomAccessFile
 
 /**
- * A file descriptor on the JVM. There is no Parcel to carry it across processes, so it simply holds the
- * [RandomAccessFile] opened on the file; Firebase Storage opens one to learn the size of a file it uploads.
+ * A file descriptor on the JVM. There is no Parcel to carry it across processes, so it simply holds the stream opened
+ * on the file, with the access the `MODE_*` flags ask for: a [FileInputStream] for read-only, a [FileOutputStream] for
+ * write-only (appending through the descriptor when `MODE_APPEND` is set) and a [RandomAccessFile] for read-write.
+ * Firebase Storage opens one to learn the size of a file it uploads.
  */
-class ParcelFileDescriptor private constructor(private val file: RandomAccessFile) : Closeable {
-
-    val fileDescriptor: FileDescriptor
-        get() = file.fd
+class ParcelFileDescriptor private constructor(
+    private val stream: Closeable,
+    val fileDescriptor: FileDescriptor,
+    private val size: () -> Long,
+) : Closeable {
 
     /** The size of the file in bytes, or -1 when it cannot be determined. */
     val statSize: Long
         get() = try {
-            file.length()
+            size()
         } catch (e: IOException) {
             -1
         }
 
     @Throws(IOException::class)
-    override fun close() = file.close()
+    override fun close() = stream.close()
 
     companion object {
         const val MODE_WORLD_READABLE = 0x00000001
@@ -41,12 +46,22 @@ class ParcelFileDescriptor private constructor(private val file: RandomAccessFil
         @JvmStatic
         @Throws(FileNotFoundException::class)
         fun open(file: File, mode: Int): ParcelFileDescriptor {
+            val readable = mode and MODE_READ_ONLY != 0
             val writable = mode and MODE_WRITE_ONLY != 0
+            require(readable || writable) { "Bad mode: $mode" }
             if (!file.exists() && (!writable || mode and MODE_CREATE == 0)) throw FileNotFoundException(file.path)
-            val opened = RandomAccessFile(file, if (writable) "rw" else "r")
-            if (writable && mode and MODE_TRUNCATE != 0) opened.setLength(0)
-            if (writable && mode and MODE_APPEND != 0) opened.seek(opened.length())
-            return ParcelFileDescriptor(opened)
+            val truncate = mode and MODE_TRUNCATE != 0
+            val append = mode and MODE_APPEND != 0
+            return when {
+                !writable -> FileInputStream(file).let { ParcelFileDescriptor(it, it.fd) { it.channel.size() } }
+                // The output stream truncates unless it appends, which is what the write-only modes ("w", "wt", "wa") ask for.
+                !readable && (truncate || append) -> FileOutputStream(file, append).let { ParcelFileDescriptor(it, it.fd) { it.channel.size() } }
+                else -> RandomAccessFile(file, "rw").let {
+                    if (truncate) it.setLength(0)
+                    if (append) it.seek(it.length())
+                    ParcelFileDescriptor(it, it.fd) { it.length() }
+                }
+            }
         }
 
         /** The `MODE_*` flags for a mode string of `ContentResolver.openFileDescriptor`, as Android parses it. */
@@ -59,5 +74,9 @@ class ParcelFileDescriptor private constructor(private val file: RandomAccessFil
             "rwt" -> MODE_READ_WRITE or MODE_CREATE or MODE_TRUNCATE
             else -> throw IllegalArgumentException("Bad mode: $mode")
         }
+
+        /** Unsupported: a raw descriptor number cannot be adopted on the JVM. SQLite's blob descriptors are not implemented. */
+        @JvmStatic
+        fun adoptFd(fd: Int): ParcelFileDescriptor = throw UnsupportedOperationException("Adopting a raw file descriptor ($fd) is not supported on the JVM")
     }
 }
