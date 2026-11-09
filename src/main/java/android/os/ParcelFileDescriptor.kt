@@ -18,7 +18,7 @@ import java.io.RandomAccessFile
 class ParcelFileDescriptor private constructor(
     private val stream: Closeable,
     val fileDescriptor: FileDescriptor,
-    private val size: () -> Long,
+    private val size: () -> Long
 ) : Closeable {
 
     /** The size of the file in bytes, or -1 when it cannot be determined. */
