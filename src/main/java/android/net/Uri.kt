@@ -1835,8 +1835,8 @@ abstract class Uri private constructor() : Parcelable, Comparable<Uri> {
         /** Identifies a null parcelled Uri. */
         private const val NULL_TYPE_ID = 0
 
-        /** Reads Uris from Parcels. */
-        @JvmStatic
+        /** Reads Uris from Parcels. A field rather than a getter, like Android, so that Parcel finds it reflectively. */
+        @JvmField
         val CREATOR: Parcelable.Creator<Uri?> =
             object : Parcelable.Creator<Uri?> {
                 override fun createFromParcel(`in`: Parcel): Uri? {
