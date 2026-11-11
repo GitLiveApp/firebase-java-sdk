@@ -6,10 +6,13 @@ import android.util.ArrayMap;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -26,9 +29,10 @@ import java.util.Map;
  * Nothing is transported between processes on the JVM, so there is no binary format to be compatible with: the parcel
  * is an in-memory list of the values written to it, read back in the same order. {@link #dataPosition()},
  * {@link #setDataPosition} and {@link #dataSize()} therefore count values, not bytes, and {@link #marshall()} is a
- * Java-serialized copy of those values that only {@link #unmarshall} understands. Reading past the end or reading a
- * value as another type throws an {@link IllegalStateException}. Instances are not pooled: {@link #obtain()} creates a
- * fresh parcel and {@link #recycle()} empties it.
+ * tagged byte stream of those values that only {@link #unmarshall} understands. A Serializable is kept as the bytes of
+ * its serialized form from the moment it is written, and only {@link #readSerializable()} deserializes it. Reading past
+ * the end or reading a value as another type throws an {@link IllegalStateException}. Instances are not pooled:
+ * {@link #obtain()} creates a fresh parcel and {@link #recycle()} empties it.
  */
 public final class Parcel {
 
@@ -47,6 +51,17 @@ public final class Parcel {
     private static final int VAL_STRINGARRAY = 14;
     private static final int VAL_BYTE = 20;
     private static final int VAL_SERIALIZABLE = 21;
+
+    // The tags of the marshalled stream, one for each type a value in the list can have once the typed writes have
+    // flattened lists, maps, bundles and parcelables into these.
+    private static final byte TAG_NULL = 0;
+    private static final byte TAG_STRING = 1;
+    private static final byte TAG_INT = 2;
+    private static final byte TAG_LONG = 3;
+    private static final byte TAG_FLOAT = 4;
+    private static final byte TAG_DOUBLE = 5;
+    private static final byte TAG_BYTES = 6;
+    private static final byte TAG_SERIALIZED = 7;
 
     private static final int EX_SECURITY = -1;
     private static final int EX_ILLEGAL_ARGUMENT = -3;
@@ -95,12 +110,45 @@ public final class Parcel {
         position = pos;
     }
 
-    /** The values of the parcel as bytes that {@link #unmarshall} can read back into a parcel. */
+    /**
+     * The values of the parcel as a tagged byte stream that {@link #unmarshall} reads back into a parcel: the number of
+     * values, then each as a tag byte and its data. Serializables stay the bytes of their serialized form.
+     *
+     * @throws IllegalStateException when a value is of a type the stream cannot carry, which the typed writes never store
+     */
     @NonNull
     public byte[] marshall() {
         ByteArrayOutputStream bytes = new ByteArrayOutputStream();
-        try (ObjectOutputStream out = new ObjectOutputStream(bytes)) {
-            out.writeObject(new ArrayList<>(values));
+        try (DataOutputStream out = new DataOutputStream(bytes)) {
+            out.writeInt(values.size());
+            for (Object value : values) {
+                if (value == null) {
+                    out.writeByte(TAG_NULL);
+                } else if (value instanceof String) {
+                    out.writeByte(TAG_STRING);
+                    writeBytes(out, ((String) value).getBytes(StandardCharsets.UTF_8));
+                } else if (value instanceof Integer) {
+                    out.writeByte(TAG_INT);
+                    out.writeInt((Integer) value);
+                } else if (value instanceof Long) {
+                    out.writeByte(TAG_LONG);
+                    out.writeLong((Long) value);
+                } else if (value instanceof Float) {
+                    out.writeByte(TAG_FLOAT);
+                    out.writeFloat((Float) value);
+                } else if (value instanceof Double) {
+                    out.writeByte(TAG_DOUBLE);
+                    out.writeDouble((Double) value);
+                } else if (value instanceof byte[]) {
+                    out.writeByte(TAG_BYTES);
+                    writeBytes(out, (byte[]) value);
+                } else if (value instanceof SerializedValue) {
+                    out.writeByte(TAG_SERIALIZED);
+                    writeBytes(out, ((SerializedValue) value).bytes);
+                } else {
+                    throw new IllegalStateException("Parcel: cannot marshall a value of type " + value.getClass().getName());
+                }
+            }
         } catch (IOException e) {
             throw new IllegalStateException("Unable to marshall the parcel", e);
         }
@@ -109,19 +157,73 @@ public final class Parcel {
 
     /**
      * Replaces the contents of the parcel with the values {@link #marshall()} produced, leaving the position at the end
-     * like Android does: call {@link #setDataPosition setDataPosition(0)} before reading them.
+     * like Android does: call {@link #setDataPosition setDataPosition(0)} before reading them. Nothing is deserialized
+     * here: a Serializable in the data stays bytes until {@link #readSerializable()} asks for it.
+     *
+     * @throws IllegalArgumentException when the data is not a marshalled parcel
      */
-    @SuppressWarnings("unchecked")
     public void unmarshall(@NonNull byte[] data, int offset, int length) {
-        List<Object> unmarshalled;
-        try (ObjectInputStream in = new ObjectInputStream(new ByteArrayInputStream(data, offset, length))) {
-            unmarshalled = (List<Object>) in.readObject();
-        } catch (IOException | ClassNotFoundException | ClassCastException e) {
+        List<Object> unmarshalled = new ArrayList<>();
+        try (DataInputStream in = new DataInputStream(new ByteArrayInputStream(data, offset, length))) {
+            int count = in.readInt();
+            if (count < 0) {
+                throw new IOException("Negative value count " + count);
+            }
+            for (int i = 0; i < count; i++) {
+                byte tag = in.readByte();
+                switch (tag) {
+                    case TAG_NULL:
+                        unmarshalled.add(null);
+                        break;
+                    case TAG_STRING:
+                        unmarshalled.add(new String(readBytes(in), StandardCharsets.UTF_8));
+                        break;
+                    case TAG_INT:
+                        unmarshalled.add(in.readInt());
+                        break;
+                    case TAG_LONG:
+                        unmarshalled.add(in.readLong());
+                        break;
+                    case TAG_FLOAT:
+                        unmarshalled.add(in.readFloat());
+                        break;
+                    case TAG_DOUBLE:
+                        unmarshalled.add(in.readDouble());
+                        break;
+                    case TAG_BYTES:
+                        unmarshalled.add(readBytes(in));
+                        break;
+                    case TAG_SERIALIZED:
+                        unmarshalled.add(new SerializedValue(readBytes(in)));
+                        break;
+                    default:
+                        throw new IOException("Unknown value tag " + tag);
+                }
+            }
+            if (in.read() != -1) {
+                throw new IOException("Data after the last value");
+            }
+        } catch (IOException e) {
             throw new IllegalArgumentException("The data is not a marshalled parcel", e);
         }
         values.clear();
         values.addAll(unmarshalled);
         position = values.size();
+    }
+
+    private static void writeBytes(DataOutputStream out, byte[] bytes) throws IOException {
+        out.writeInt(bytes.length);
+        out.write(bytes);
+    }
+
+    private static byte[] readBytes(DataInputStream in) throws IOException {
+        int length = in.readInt();
+        if (length < 0 || length > in.available()) {
+            throw new IOException("Bad length " + length + " with " + in.available() + " bytes left");
+        }
+        byte[] bytes = new byte[length];
+        in.readFully(bytes);
+        return bytes;
     }
 
     public void writeByte(byte val) {
@@ -248,14 +350,19 @@ public final class Parcel {
         p.writeToParcel(this, parcelableFlags);
     }
 
-    /** Writes the object itself, which must be Serializable for {@link #marshall()} to work. */
+    /**
+     * Writes a serialized snapshot of the object, so that changing it afterwards does not change the parcel and each
+     * {@link #readSerializable()} returns a fresh copy.
+     *
+     * @throws IllegalArgumentException when the object cannot be serialized
+     */
     public void writeSerializable(@Nullable Serializable s) {
-        write(s);
+        write(s == null ? null : new SerializedValue(s));
     }
 
     /**
      * Writes a value of one of the types the typed write methods take, with a tag for {@link #readValue} to know which,
-     * or any other Serializable value as is.
+     * or a serialized snapshot of any other Serializable value.
      *
      * @throws IllegalArgumentException for a value of any other type
      */
@@ -521,9 +628,16 @@ public final class Parcel {
         return (T) creator.createFromParcel(this);
     }
 
+    /**
+     * Deserializes a fresh copy of the object {@link #writeSerializable} wrote. This is the only place the parcel
+     * deserializes anything: {@link #unmarshall} keeps serialized objects as bytes until a caller asks for them here.
+     *
+     * @throws IllegalStateException when the bytes cannot be deserialized
+     */
     @Nullable
     public Serializable readSerializable() {
-        return readNullable(Serializable.class);
+        SerializedValue value = readNullable(SerializedValue.class);
+        return value == null ? null : value.read();
     }
 
     /** Reads a value {@link #writeValue} wrote, creating a Parcelable through {@code loader} when one is given. */
@@ -607,6 +721,34 @@ public final class Parcel {
     private void readEntries(int n, Map<Object, Object> outVal, @Nullable ClassLoader loader) {
         for (int i = 0; i < n; i++) {
             outVal.put(readValue(loader), readValue(loader));
+        }
+    }
+
+    /** The bytes of a Serializable's serialized form, taken when it is written and deserialized afresh on every read. */
+    private static final class SerializedValue {
+
+        final byte[] bytes;
+
+        SerializedValue(Serializable value) {
+            ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+            try (ObjectOutputStream out = new ObjectOutputStream(bytes)) {
+                out.writeObject(value);
+            } catch (IOException e) {
+                throw new IllegalArgumentException("Parcel: unable to marshal value " + value, e);
+            }
+            this.bytes = bytes.toByteArray();
+        }
+
+        SerializedValue(byte[] bytes) {
+            this.bytes = bytes;
+        }
+
+        Serializable read() {
+            try (ObjectInputStream in = new ObjectInputStream(new ByteArrayInputStream(bytes))) {
+                return (Serializable) in.readObject();
+            } catch (IOException | ClassNotFoundException | ClassCastException e) {
+                throw new IllegalStateException("Parcel: unable to read the serialized value", e);
+            }
         }
     }
 

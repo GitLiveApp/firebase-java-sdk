@@ -2,6 +2,7 @@
  * Tests the android.os.Parcel shim: the repackaged Firebase classes expose writeToParcel(Parcel, int) and a CREATOR,
  * and this checks that values written to a parcel read back the way they do on Android.
  */
+import android.net.Uri
 import android.os.Bundle
 import android.os.Parcel
 import android.os.Parcelable
@@ -10,6 +11,7 @@ import com.google.firebase.Timestamp
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotSame
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
@@ -61,6 +63,44 @@ class ParcelTest {
     }
 
     @Test
+    fun `round trips a Uri through its CREATOR`() {
+        val hierarchical = Uri.parse("https://example.com/path/to?q=1&r=two#fragment")
+        val opaque = Uri.parse("mailto:someone@example.com")
+        val parcel = Parcel.obtain()
+        parcel.writeParcelable(hierarchical, 0)
+        parcel.writeValue(opaque)
+        parcel.setDataPosition(0)
+
+        assertEquals(hierarchical, parcel.readParcelable<Uri>(null))
+        assertEquals(opaque, parcel.readValue(Uri::class.java.classLoader))
+    }
+
+    @Test
+    fun `serializables are snapshots, read as fresh copies`() {
+        val builder = StringBuilder("one")
+        val numbers = intArrayOf(1, 2)
+        val parcel = Parcel.obtain()
+        parcel.writeSerializable(builder)
+        parcel.writeValue(numbers) // falls back to the Serializable path
+        parcel.writeSerializable(null)
+        builder.append(" two")
+        numbers[0] = 99
+
+        parcel.setDataPosition(0)
+        val first = parcel.readSerializable()
+        assertEquals("one", first.toString())
+        val read = parcel.readValue(null) as IntArray
+        assertArrayEquals(intArrayOf(1, 2), read)
+        assertNull(parcel.readSerializable())
+        read[1] = 42
+        parcel.setDataPosition(0)
+        val second = parcel.readSerializable()
+        assertEquals("one", second.toString())
+        assertNotSame(first, second)
+        assertArrayEquals(intArrayOf(1, 2), parcel.readValue(null) as IntArray)
+    }
+
+    @Test
     fun `round trips collections, bundles and tagged values`() {
         val parcel = Parcel.obtain()
         parcel.writeStringList(listOf("a", "b"))
@@ -98,6 +138,12 @@ class ParcelTest {
         parcel.writeInt(1)
         parcel.writeString("one")
         parcel.writeParcelable(Timestamp(3L, 4), 0)
+        parcel.writeString(null)
+        parcel.writeLong(1L shl 40)
+        parcel.writeFloat(1.5f)
+        parcel.writeDouble(2.5)
+        parcel.writeByteArray(byteArrayOf(9, 8))
+        parcel.writeValue(java.util.Date(5L))
         val bytes = parcel.marshall()
 
         val copy = Parcel.obtain()
@@ -107,6 +153,16 @@ class ParcelTest {
         assertEquals(1, copy.readInt())
         assertEquals("one", copy.readString())
         assertEquals(Timestamp(3L, 4), copy.readParcelable<Timestamp>(null))
+        assertNull(copy.readString())
+        assertEquals(1L shl 40, copy.readLong())
+        assertEquals(1.5f, copy.readFloat(), 0.0f)
+        assertEquals(2.5, copy.readDouble(), 0.0)
+        assertArrayEquals(byteArrayOf(9, 8), copy.createByteArray())
+        assertEquals(java.util.Date(5L), copy.readValue(null))
+        assertEquals(0, copy.dataAvail())
+
+        assertThrows(IllegalArgumentException::class.java) { Parcel.obtain().unmarshall(byteArrayOf(0, 0, 0, 1, 42), 0, 5) }
+        assertThrows(IllegalArgumentException::class.java) { Parcel.obtain().unmarshall(bytes, 0, bytes.size - 1) }
     }
 
     @Test
